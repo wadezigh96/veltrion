@@ -31,7 +31,7 @@ export function sanitizePayBoxPublicResult(value: unknown, depth = 0): unknown {
     const result: Record<string, unknown> = {};
     for (const [key, item] of Object.entries(value as Record<string, unknown>).slice(0, 60)) {
       if (SENSITIVE_KEY.test(key)) continue;
-      result[key.slice(0, 80)] = redactAndBound(item, depth + 1);
+      result[key.slice(0, 80)] = sanitizePayBoxPublicResult(item, depth + 1);
     }
     return result;
   }
