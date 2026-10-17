@@ -17,8 +17,17 @@ export type RiskCheckResult = {
 const SOLANA_MAINNET = "solana:mainnet";
 const MAX_SLIPPAGE_BPS = 300;
 const MAX_QUOTE_AGE_SECONDS = 60;
+const MAX_AMOUNT_LENGTH = 100;
 const BASE58_PUBLIC_KEY = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const POSITIVE_DECIMAL = /^(?:0|[1-9]\d*)(?:\.\d+)?$/;
+
+function isPositiveDecimalAmount(amount: string): boolean {
+  if (amount.length === 0 || amount.length > MAX_AMOUNT_LENGTH || !POSITIVE_DECIMAL.test(amount)) {
+    return false;
+  }
+  // Avoid IEEE-754 conversion: very large or tiny valid decimal strings can be rounded.
+  return /[1-9]/.test(amount);
+}
 
 export function checkDefiRequest(input: RiskCheckInput): RiskCheckResult {
   const reasons: string[] = [];
@@ -27,8 +36,8 @@ export function checkDefiRequest(input: RiskCheckInput): RiskCheckResult {
     reasons.push("Unsupported chain: this initial policy only accepts solana:mainnet.");
   }
 
-  if (!POSITIVE_DECIMAL.test(input.amount) || Number(input.amount) <= 0 || !Number.isFinite(Number(input.amount))) {
-    reasons.push("Amount must be a positive decimal string.");
+  if (!isPositiveDecimalAmount(input.amount)) {
+    reasons.push(`Amount must be a positive decimal string of at most ${MAX_AMOUNT_LENGTH} characters, without exponent notation.`);
   }
 
   if (input.action === "swap") {
