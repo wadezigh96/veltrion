@@ -18,7 +18,7 @@ export function loadX402ReceiveConfig(env: NodeJS.ProcessEnv = process.env): X40
   const enabled = env.X402_RECEIVE_ENABLED === "true";
   const payTo = env.X402_RECEIVE_PAY_TO?.trim() ?? "";
   const price = env.X402_RECEIVE_PRICE_USDC?.trim() ?? "";
-  const facilitatorRaw = env.X402_FACILITATOR_URL?.trim() ?? "";
+  const facilitatorRaw = env.X402_FACILITATOR_URL?.trim() || "https://facilitator.payai.network/";
   const publicRaw = env.X402_PUBLIC_URL?.trim() ?? "";
   const host = env.X402_RECEIVE_HOST?.trim() || "127.0.0.1";
   const port = Number(env.X402_RECEIVE_PORT ?? "8787");
@@ -40,6 +40,39 @@ export function loadX402ReceiveConfig(env: NodeJS.ProcessEnv = process.env): X40
   const [whole = "0", fraction = ""] = price.split(".");
   const priceAtomic = (BigInt(whole) * 1_000_000n + BigInt(fraction.padEnd(6, "0") || "0")).toString();
   return { enabled, payTo, priceAtomic, facilitatorUrl, publicUrl, host, port };
+}
+
+export async function verifyFacilitatorSupport(
+  config: X402ReceiveConfig,
+  fetcher: typeof fetch = fetch
+): Promise<void> {
+  const supportedUrl = new URL("supported", config.facilitatorUrl.toString().endsWith("/")
+    ? config.facilitatorUrl
+    : new URL(config.facilitatorUrl.toString() + "/"));
+  let response: Response;
+  try {
+    response = await fetcher(supportedUrl, {
+      method: "GET",
+      headers: { accept: "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(8_000)
+    });
+  } catch {
+    throw new Error("X402_FACILITATOR_SUPPORT_UNAVAILABLE");
+  }
+  if (!response.ok) throw new Error("X402_FACILITATOR_SUPPORT_UNAVAILABLE");
+  let body: unknown;
+  try { body = await response.json(); }
+  catch { throw new Error("X402_FACILITATOR_SUPPORT_INVALID"); }
+  if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("X402_FACILITATOR_SUPPORT_INVALID");
+  const kinds = (body as Record<string, unknown>).kinds;
+  if (!Array.isArray(kinds)) throw new Error("X402_FACILITATOR_SUPPORT_INVALID");
+  const supported = kinds.some((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return false;
+    const kind = item as Record<string, unknown>;
+    return kind.x402Version === 2 && kind.scheme === "exact" && kind.network === BASE_NETWORK;
+  });
+  if (!supported) throw new Error("X402_FACILITATOR_UNSUPPORTED_NETWORK");
 }
 
 export function createPaymentRequirements(config: X402ReceiveConfig) {
