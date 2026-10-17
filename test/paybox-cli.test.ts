@@ -56,6 +56,55 @@ test("x402 challenge summary exposes only bounded payment choice fields", () => 
 });
 
 test("x402 challenge summary rejects malformed or unbounded accepts", () => {
-  assert.throws(() => summarizeX402Challenge({ accepts: [] }), /X402_INVALID_ACCEPTS/);
-  assert.throws(() => summarizeX402Challenge({ accepts: [{ scheme: "exact", network: "solana", amount: "-1", asset: "USDC", payTo: "wallet" }] }), /X402_INVALID_ACCEPT/);
+  assert.throws(() => summarizeX402Challenge({ x402Version: 2, accepts: [] }), /X402_INVALID_ACCEPTS/);
+  assert.throws(() => summarizeX402Challenge({ x402Version: 2, accepts: [{ scheme: "exact", network: "solana", amount: "-1", asset: "USDC", payTo: "wallet" }] }), /X402_INVALID_ACCEPT/);
+});
+
+test("x402 challenge rejects unsupported versions, networks, assets, and recipients", () => {
+  assert.throws(() => summarizeX402Challenge({
+    x402Version: 1,
+    accepts: []
+  }), /X402_UNSUPPORTED_VERSION/);
+
+  assert.throws(() => summarizeX402Challenge({
+    x402Version: 2,
+    accepts: [{
+      scheme: "exact",
+      network: "eip155:1",
+      amount: "20000",
+      asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      payTo: "0x15773309E68e7d6b561a86bFca8f1Bfbf1807D90",
+      maxTimeoutSeconds: 300
+    }]
+  }), /X402_UNSUPPORTED_NETWORK_ASSET/);
+
+  assert.throws(() => summarizeX402Challenge({
+    x402Version: 2,
+    accepts: [{
+      scheme: "exact",
+      network: "eip155:8453",
+      amount: "20000",
+      asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      payTo: "not-an-address",
+      maxTimeoutSeconds: 300
+    }]
+  }), /X402_INVALID_PAY_TO/);
+});
+
+test("x402 challenge rejects zero amounts and invalid timeout values", () => {
+  const base = {
+    scheme: "exact",
+    network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+    asset: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    payTo: "3fPw1ntfRAsTsDtNeJoEyoiTddJePWZ59oRoaRSBShRk",
+    maxTimeoutSeconds: 300
+  };
+  assert.throws(() => summarizeX402Challenge({
+    x402Version: 2,
+    accepts: [{ ...base, amount: "0" }]
+  }), /X402_INVALID_ACCEPT/);
+  assert.throws(() => summarizeX402Challenge({
+    x402Version: 2,
+    accepts: [{ ...base, amount: "20000", maxTimeoutSeconds: 99999 }]
+  }), /X402_INVALID_ACCEPT/);
 });
