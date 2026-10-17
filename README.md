@@ -8,7 +8,7 @@ VELTRION is a separate project for researching Solana DeFi opportunities, valida
 
 - [x] Initial repository and security-design review
 - [x] Read-only-first architecture defined
-- [x] MCP server tools for status, DeFi risk checks, PayBox discovery/wallet metadata, Solana mint inspection, and read-only Solana portfolio/activity lookup
+- [x] MCP server tools for status, DeFi risk checks, PayBox discovery/wallet metadata, Solana mint inspection, live portfolio valuation, and transaction activity lookup
 - [x] Initial unit tests and security policy tests written
 - [x] PayBox adapter boundary with mock-only and unconfigured fail-closed modes
 - [x] GitHub Actions build, tests, and production dependency audit passed on commit `8b01421`
@@ -111,3 +111,14 @@ The legacy mock adapter rejects swap requests. VELTRION now uses the official MC
 4. Call `paybox_mcp_discover` to verify the direct MCP handshake and list available tool names/descriptions. This does not call those tools or connect a wallet.
 
 Do not paste `PAYBOX_ACCESS_TOKEN` into chat, source files, MCP tool arguments, or GitHub issues. Do not paste credentials into chat or commit them. VELTRION's swap/transfer execution tools are intentionally not enabled yet.
+
+
+## Verify live portfolio data (no mock)
+
+Run a real read-only lookup against Solana mainnet RPC and DexScreener using a public wallet address you control. The address is read from a local environment variable and is not written to source code. Do not use a seed phrase or private key.
+
+```bash
+VELTRION_PUBLIC_WALLET='YOUR_PUBLIC_SOLANA_ADDRESS' npm run verify:portfolio:live
+```
+
+This command prints a sanitized summary only. It does not sign, pay, or submit transactions. Token prices are estimates; unsupported or illiquid assets may be unpriced, and activity categories are heuristics rather than authoritative protocol decoding.
