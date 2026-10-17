@@ -17,7 +17,7 @@ Set these values in the host's secret/environment settings, never in Git:
 - `X402_RECEIVE_ENABLED=true` — explicit opt-in. Default false.
 - `X402_RECEIVE_PAY_TO=0x...` — your chosen Base mainnet receiving address. Do not copy a wallet address without deciding it is the intended receiver.
 - `X402_RECEIVE_PRICE_USDC=0.01` — decimal USDC price, up to six decimal places.
-- `X402_FACILITATOR_URL=https://YOUR-APPROVED-FACILITATOR/` — facilitator base URL; must support x402 V2 exact on `eip155:8453`. VELTRION appends `verify` and `settle`.
+- `X402_FACILITATOR_URL=https://facilitator.payai.network/` — optional; defaults to the PayAI facilitator. At startup, when enabled, VELTRION checks `/supported` and refuses to start unless the facilitator advertises x402 V2 exact on `eip155:8453`. VELTRION appends `verify` and `settle`.
 - `X402_PUBLIC_URL=https://YOUR-DEPLOYED-HOST/` — public HTTPS origin of this receiver.
 - Optional `X402_RECEIVE_HOST=127.0.0.1` and `X402_RECEIVE_PORT=8787`.
 
