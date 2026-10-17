@@ -2,10 +2,10 @@ export type RiskCheckInput = {
   chain: string;
   action: "swap" | "transfer" | "stake" | "lend";
   amount: string;
-  slippageBps?: number;
-  quoteAgeSeconds?: number;
-  recipient?: string;
-  tokenMint?: string;
+  slippageBps?: number | undefined;
+  quoteAgeSeconds?: number | undefined;
+  recipient?: string | undefined;
+  tokenMint?: string | undefined;
 };
 
 export type RiskCheckResult = {
