@@ -193,7 +193,7 @@ async function enrichSignature(signature: ReturnType<typeof parseSignatures>[num
     if (meta.err !== null && meta.err !== undefined) {
       category = "failed";
       classificationConfidence = "high";
-    } else if (tokenDeltas.length >= 2 && (DEX_PROGRAM_HINTS.some(hint => haystack.toLowerCase().includes(hint.toLowerCase())) || /instruction:\\s*swap/i.test(haystack))) {
+    } else if (tokenDeltas.length >= 2 && (DEX_PROGRAM_HINTS.some(hint => haystack.toLowerCase().includes(hint.toLowerCase())) || /instruction:\s*swap/i.test(haystack))) {
       category = "swap";
       classificationConfidence = "medium";
     } else if (STAKE_PROGRAM_HINTS.some(hint => haystack.includes(hint))) {
