@@ -82,4 +82,6 @@ Any material change in token, amount, recipient, chain, or slippage requires a n
 
 ## Current status
 
-This document defines the integration plan. It does not mean PayBox is already authenticated, a real wallet is connected, a live quote has been fetched, or any transaction capability has been tested. Mainnet execution remains off until a later, separately authorized phase.
+The repository now depends on the official `@paybox-sh/sdk` and exposes `paybox_readonly_status`. That tool calls the SDK's documented `PayboxClient.fromConfig()` and `listCredentials()` methods, then emits only a bounded metadata allowlist (credential id, display name, and kind). It suppresses raw provider errors to avoid leaking request details. Unit tests cover the sanitizer, malformed responses, and output bounds.
+
+This is a real SDK-backed read-only integration path, but it is **not yet verified against the user's authenticated PayBox account**. Build/test status must be checked in GitHub Actions. No swap/transfer execution tool is exposed by VELTRION yet. Before adding one, verify the exact SDK request/response schema and Solana chain support, then test user approval, denied/pending outcomes, timeout reconciliation using the same request ID, duplicate prevention, and on-chain status verification. Mainnet execution remains disabled.
