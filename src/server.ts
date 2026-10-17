@@ -30,7 +30,8 @@ server.registerTool(
       text: JSON.stringify({
         name: "VELTRION",
         networkScope: "Solana",
-        paybox: await getPayBoxCliStatus(),\n        payboxExecution: getPayBoxExecutionStatus(),
+        paybox: await getPayBoxCliStatus(),
+        payboxExecution: getPayBoxExecutionStatus(),
         liveWalletAccess: false,
         executionEnabled: false,
         availableFeatures: ["status", "solana_wallet_portfolio", "paybox_x402_discover", "paybox_x402_preview_pools", "paybox_mcp_discover", "paybox_list_wallets", "solana_token_inspect", "defi_risk_check", "defi_opportunity_scan", "solana_native_staking_monitor", "solana_transaction_status", "paybox_request_swap", "paybox_request_transfer", "paybox_request_status"],
