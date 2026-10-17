@@ -4,6 +4,7 @@ import { z } from "zod";
 import { checkDefiRequest } from "./policy.js";
 import { MockPayBoxAdapter } from "./paybox/adapter.js";
 import { discoverPayBoxMcpTools, listPayBoxWallets } from "./paybox/mcp.js";
+import { inspectSolanaMint } from "./solana/rpc.js";
 
 const paybox = new MockPayBoxAdapter();
 
@@ -28,7 +29,7 @@ server.registerTool(
         payboxExecutionAdapter: paybox.status(),
         liveWalletAccess: false,
         executionEnabled: false,
-        availableFeatures: ["status", "paybox_mcp_discover", "paybox_list_wallets", "defi_risk_check"],
+        availableFeatures: ["status", "paybox_mcp_discover", "paybox_list_wallets", "solana_token_inspect", "defi_risk_check"],
         note: "No wallet has been accessed and no transaction has been sent."
       }, null, 2)
     }]
@@ -63,6 +64,36 @@ server.registerTool(
       text: JSON.stringify(await listPayBoxWallets(), null, 2)
     }]
   })
+);
+
+server.registerTool(
+  "solana_token_inspect",
+  {
+    title: "Inspect Solana token mint",
+    description: "Read the confirmed Solana mint account and report token program, decimals, atomic supply, initialization, and authority flags. Read-only; never signs or sends transactions.",
+    inputSchema: {
+      mint: z.string().min(32).max(44).regex(/^[1-9A-HJ-NP-Za-km-z]+$/).describe("Solana SPL or Token-2022 mint address.")
+    }
+  },
+  async ({ mint }) => {
+    try {
+      return {
+        content: [{ type: "text", text: JSON.stringify(await inspectSolanaMint(mint), null, 2) }]
+      };
+    } catch (error) {
+      const code = error instanceof Error && /^[A-Z0-9_]+$/.test(error.message)
+        ? error.message
+        : "SOLANA_INSPECTION_FAILED";
+      return {
+        content: [{ type: "text", text: JSON.stringify({
+          mint,
+          error: code,
+          executionEnabled: false,
+          note: "Inspection failed closed. No transaction was requested."
+        }, null, 2) }]
+      };
+    }
+  }
 );
 
 server.registerTool(
