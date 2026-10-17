@@ -96,7 +96,7 @@ function parseSignatures(value: unknown) {
         !Number.isSafeInteger(item.slot) || typeof item.slot !== "number" ||
         !(item.blockTime === null || item.blockTime === undefined ||
           (typeof item.blockTime === "number" && Number.isSafeInteger(item.blockTime))) ||
-        !(item.err === null || isRecord(item.err) || Array.isArray(item.err))) {
+        !(item.err === null || item.err === undefined || isRecord(item.err) || Array.isArray(item.err))) {
       throw new Error("SOLANA_RPC_INVALID_SIGNATURE");
     }
     return {
@@ -124,7 +124,7 @@ async function getTokenPrice(mint: string): Promise<PriceQuote | null> {
     isRecord(pair.baseToken) && pair.baseToken.address === mint &&
     typeof pair.priceUsd === "string" && Number.isFinite(Number(pair.priceUsd)) &&
     Number(pair.priceUsd) > 0 && isRecord(pair.liquidity) &&
-    typeof pair.liquidity.usd === "number" && Number.isFinite(pair.liquidity.usd) && pair.liquidity.usd >= 0);
+    typeof pair.liquidity.usd === "number" && Number.isFinite(pair.liquidity.usd) && pair.liquidity.usd >= 1_000);
   candidates.sort((a, b) => Number((b.liquidity as JsonRecord).usd) - Number((a.liquidity as JsonRecord).usd));
   const best = candidates[0];
   if (!best || !isRecord(best.liquidity)) return null;
@@ -174,8 +174,43 @@ function collectTokenDeltas(meta: JsonRecord, address: string): Array<{ mint: st
   })).filter(item => item.deltaAtomic !== "0");
 }
 
-const DEX_PROGRAM_HINTS = ["JUP6", "675kPX", "whirLb", "CAMMCzo", "LBUZKh", "Meteora"];
-const STAKE_PROGRAM_HINTS = ["Stake11111111111111111111111111111111111111", "Marinade", "Jito"];
+const DEX_PROGRAM_HINTS = [
+  "JUP6", "675kPX", "whirLb", "CAMMCzo", "LBUZKh", "Meteora",
+  "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4"
+];
+const STAKE_PROGRAM_HINTS = [
+  "Stake11111111111111111111111111111111111111",
+  "Marinade", "Jito"
+];
+
+function collectProgramIds(message: JsonRecord, meta: JsonRecord): string[] {
+  const accountKeys = Array.isArray(message.accountKeys) ? message.accountKeys : [];
+  const ids = new Set<string>();
+  for (const key of accountKeys) {
+    if (typeof key === "string") ids.add(key);
+    else if (isRecord(key) && typeof key.pubkey === "string") ids.add(key.pubkey);
+  }
+  const addInstructions = (instructions: unknown) => {
+    if (!Array.isArray(instructions)) return;
+    for (const instruction of instructions) {
+      if (!isRecord(instruction)) continue;
+      if (typeof instruction.programId === "string") ids.add(instruction.programId);
+      if (typeof instruction.program === "string") ids.add(instruction.program);
+      if (typeof instruction.programIdIndex === "number" && Number.isInteger(instruction.programIdIndex)) {
+        const key = accountKeys[instruction.programIdIndex];
+        if (typeof key === "string") ids.add(key);
+        else if (isRecord(key) && typeof key.pubkey === "string") ids.add(key.pubkey);
+      }
+    }
+  };
+  addInstructions(message.instructions);
+  if (Array.isArray(meta.innerInstructions)) {
+    for (const group of meta.innerInstructions) {
+      if (isRecord(group)) addInstructions(group.instructions);
+    }
+  }
+  return [...ids];
+}
 
 async function enrichSignature(signature: ReturnType<typeof parseSignatures>[number], address: string) {
   try {
@@ -186,8 +221,7 @@ async function enrichSignature(signature: ReturnType<typeof parseSignatures>[num
     const meta = isRecord(raw.meta) ? raw.meta : {};
     const transaction = isRecord(raw.transaction) ? raw.transaction : {};
     const message = isRecord(transaction.message) ? transaction.message : {};
-    const accountKeys = Array.isArray(message.accountKeys) ? message.accountKeys : [];
-    const programs = accountKeys.map(key => isRecord(key) && typeof key.pubkey === "string" ? key.pubkey : typeof key === "string" ? key : "").filter(Boolean);
+    const programs = collectProgramIds(message, meta);
     const tokenDeltas = collectTokenDeltas(meta, address);
     const logs = Array.isArray(meta.logMessages) ? meta.logMessages.filter((v): v is string => typeof v === "string").join(" ") : "";
     const haystack = programs.join(" ") + " " + logs;
@@ -205,7 +239,8 @@ async function enrichSignature(signature: ReturnType<typeof parseSignatures>[num
     } else if (tokenDeltas.length > 0) {
       category = "token-movement";
       classificationConfidence = "low";
-    } else if (programs.includes(SPL_TOKEN_PROGRAM) || programs.includes(TOKEN_2022_PROGRAM)) {
+    } else if (programs.includes(SPL_TOKEN_PROGRAM) || programs.includes(TOKEN_2022_PROGRAM) ||
+      programs.includes("spl-token") || programs.includes("spl-token-2022")) {
       category = "token-program-interaction";
       classificationConfidence = "low";
     }
