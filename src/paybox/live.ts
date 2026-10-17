@@ -28,6 +28,10 @@ type CredentialListShape = {
   ungranted?: Array<unknown>;
 };
 
+export function isCredentialListResponse(value: unknown): value is CredentialListShape & { credentials: NonNullable<CredentialListShape["credentials"]> } {
+  return Boolean(value && typeof value === "object" && Array.isArray((value as CredentialListShape).credentials));
+}
+
 function safeLabel(value: unknown, fallback: string): string {
   if (typeof value !== "string") return fallback;
   const trimmed = value.trim();
@@ -57,7 +61,7 @@ export async function loadPayBoxReadOnlySnapshot(): Promise<PayBoxReadOnlySnapsh
   try {
     const client = PayboxClient.fromConfig();
     const raw: unknown = await client.listCredentials();
-    if (!raw || typeof raw !== "object" || !Array.isArray((raw as CredentialListShape).credentials)) {
+    if (!isCredentialListResponse(raw)) {
       return {
         provider: "PayBox",
         connection: "error",
