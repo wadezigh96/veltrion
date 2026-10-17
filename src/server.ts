@@ -26,7 +26,8 @@ server.registerTool(
       text: JSON.stringify({
         name: "VELTRION",
         networkScope: "Solana",
-        payboxExecutionAdapter: paybox.status(),\n        payboxReadOnlyCheck: "available; authenticated account not yet verified",
+        payboxExecutionAdapter: paybox.status(),
+        payboxReadOnlyCheck: "available; authenticated account not yet verified",
         liveWalletAccess: false,
         executionEnabled: false,
         availableFeatures: ["status", "paybox_readonly_status", "paybox_mcp_discover", "defi_risk_check"],
