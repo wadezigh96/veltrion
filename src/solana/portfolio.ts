@@ -196,6 +196,9 @@ function collectProgramIds(message: JsonRecord, meta: JsonRecord): string[] {
       if (!isRecord(instruction)) continue;
       if (typeof instruction.programId === "string") ids.add(instruction.programId);
       if (typeof instruction.program === "string") ids.add(instruction.program);
+      if (isRecord(instruction.parsed) && typeof instruction.parsed.type === "string") {
+        ids.add(instruction.parsed.type);
+      }
       if (typeof instruction.programIdIndex === "number" && Number.isInteger(instruction.programIdIndex)) {
         const key = accountKeys[instruction.programIdIndex];
         if (typeof key === "string") ids.add(key);
@@ -236,6 +239,15 @@ async function enrichSignature(signature: ReturnType<typeof parseSignatures>[num
     } else if (STAKE_PROGRAM_HINTS.some(hint => haystack.includes(hint))) {
       category = "staking-or-unstaking";
       classificationConfidence = "low";
+    } else if (/transferchecked/i.test(haystack) &&
+      (programs.includes(SPL_TOKEN_PROGRAM) || programs.includes(TOKEN_2022_PROGRAM) ||
+       programs.includes("spl-token") || programs.includes("spl-token-2022"))) {
+      category = "token-transfer";
+      classificationConfidence = "medium";
+    } else if (/instruction:\\s*transfer/i.test(haystack) &&
+      programs.includes("11111111111111111111111111111111")) {
+      category = "native-transfer";
+      classificationConfidence = "medium";
     } else if (tokenDeltas.length > 0) {
       category = "token-movement";
       classificationConfidence = "low";
