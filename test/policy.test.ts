@@ -80,3 +80,14 @@ test("transfer requires a recipient", () => {
   assert.equal(result.allowedForReview, false);
   assert.ok(result.reasons.some((reason) => reason.includes("recipient")));
 });
+
+test("preserves tiny positive decimal amounts without floating-point rounding", () => {
+  const result = checkDefiRequest({
+    chain: "solana:mainnet",
+    action: "transfer",
+    amount: "0.0000000001",
+    recipient: validRecipient
+  });
+  assert.equal(result.allowedForReview, true);
+  assert.equal(result.executionEnabled, false);
+});
