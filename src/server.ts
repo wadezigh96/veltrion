@@ -4,6 +4,7 @@ import { z } from "zod";
 import { checkDefiRequest } from "./policy.js";
 import { MockPayBoxAdapter } from "./paybox/adapter.js";
 import { loadPayBoxReadOnlySnapshot } from "./paybox/live.js";
+import { discoverPayBoxMcpTools } from "./paybox/mcp.js";
 
 const paybox = new MockPayBoxAdapter();
 
@@ -28,7 +29,7 @@ server.registerTool(
         payboxExecutionAdapter: paybox.status(),\n        payboxReadOnlyCheck: "available; authenticated account not yet verified",
         liveWalletAccess: false,
         executionEnabled: false,
-        availableFeatures: ["status", "paybox_readonly_status", "defi_risk_check"],
+        availableFeatures: ["status", "paybox_readonly_status", "paybox_mcp_discover", "defi_risk_check"],
         note: "No wallet has been accessed and no transaction has been sent."
       }, null, 2)
     }]
@@ -46,6 +47,21 @@ server.registerTool(
     content: [{
       type: "text",
       text: JSON.stringify(await loadPayBoxReadOnlySnapshot(), null, 2)
+    }]
+  })
+);
+
+server.registerTool(
+  "paybox_mcp_discover",
+  {
+    title: "Discover PayBox MCP tools (read-only)",
+    description: "Uses local PAYBOX_ACCESS_TOKEN to connect to the official PayBox MCP endpoint and list tool names/descriptions only. Does not call discovered tools or execute transactions.",
+    inputSchema: {}
+  },
+  async () => ({
+    content: [{
+      type: "text",
+      text: JSON.stringify(await discoverPayBoxMcpTools(), null, 2)
     }]
   })
 );
