@@ -9,6 +9,7 @@ VELTRION is a separate project for researching Solana DeFi opportunities, valida
 - [x] Initial repository and security-design review
 - [x] Read-only-first architecture defined
 - [x] MCP server tools for status, DeFi risk checks, PayBox discovery/wallet metadata, Solana mint inspection, live portfolio valuation, and transaction activity lookup
+- [ ] Read-only LLM agent via Vercel AI Gateway added on the feature branch; provider connectivity and live tool calls still require local verification
 - [x] Initial unit tests and security policy tests written
 - [x] PayBox adapter boundary with mock-only and unconfigured fail-closed modes
 - [x] GitHub Actions build, tests, and production dependency audit passed on commit `8b01421`
@@ -75,7 +76,7 @@ VELTRION should not bypass PayBox by handling wallet private keys or broadcastin
 
 Tool availability must reflect actual implemented and tested functionality. Do not advertise an unimplemented tool as working.
 
-## Security and privacy
+## Read-only LLM agent (feature branch)\n\n- `veltrion_llm_status` reports whether `AI_GATEWAY_API_KEY` and `VELTRION_LLM_MODEL` are configured; it does not call the provider.\n- `veltrion_ai_agent` calls the Vercel AI Gateway Chat Completions endpoint and can select only three read-only tools: `solana_wallet_portfolio`, `solana_token_inspect`, and `defi_risk_check`.\n- The agent is bounded to at most three tool calls and two model requests per user message. It cannot call PayBox, pay x402 services, sign, or broadcast transactions.\n- Configure `AI_GATEWAY_API_KEY` and `VELTRION_LLM_MODEL` in the local environment or deployment secret settings. Never commit real values. No default model is assumed.\n- The API provider receives the user question and any tool results needed to answer it. Do not submit confidential information. API usage may incur charges under the provider account.\n- This is an early implementation: local build/tests and a live provider smoke test are still required; no live LLM call has been made as part of this change.\n\n## Security and privacy
 
 - Never ask the user to paste a seed phrase or private key.
 - Never commit API tokens, OAuth tokens, signing material, wallet secrets, or populated `.env` files.
