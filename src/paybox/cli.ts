@@ -167,7 +167,7 @@ export function summarizeX402Challenge(value: unknown): {
       a.scheme !== "exact" ||
       typeof a.network !== "string" ||
       typeof a.amount !== "string" ||
-      !/^\\d{1,30}$/.test(a.amount) ||
+      !/^\d{1,30}$/.test(a.amount) ||
       BigInt(a.amount) <= 0n ||
       typeof a.asset !== "string" ||
       typeof a.payTo !== "string" ||
