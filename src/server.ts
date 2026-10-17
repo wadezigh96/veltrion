@@ -2,11 +2,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { checkDefiRequest } from "./policy.js";
-import { MockPayBoxAdapter } from "./paybox/adapter.js";
+import { getPayBoxCliStatus, discoverPayBoxX402Services } from "./paybox/cli.js";
 import { discoverPayBoxMcpTools, listPayBoxWallets } from "./paybox/mcp.js";
 import { inspectSolanaMint } from "./solana/rpc.js";
-
-const paybox = new MockPayBoxAdapter();
 
 const server = new McpServer({
   name: "veltrion",
@@ -26,13 +24,27 @@ server.registerTool(
       text: JSON.stringify({
         name: "VELTRION",
         networkScope: "Solana",
-        payboxExecutionAdapter: paybox.status(),
+        paybox: await getPayBoxCliStatus(),
         liveWalletAccess: false,
         executionEnabled: false,
-        availableFeatures: ["status", "paybox_mcp_discover", "paybox_list_wallets", "solana_token_inspect", "defi_risk_check"],
-        note: "No wallet has been accessed and no transaction has been sent."
+        availableFeatures: ["status", "paybox_x402_discover", "paybox_mcp_discover", "paybox_list_wallets", "solana_token_inspect", "defi_risk_check"],
+        note: "Status and service discovery are read-only. No wallet has been accessed and no transaction has been sent."
       }, null, 2)
     }]
+  })
+);
+
+server.registerTool(
+  "paybox_x402_discover",
+  {
+    title: "Discover PayBox x402 services (live, read-only)",
+    description: "Uses the official PayBox CLI's local OAuth/API-key session to discover real Bazaar x402 services. Read-only: never pays a service, fetches a paid endpoint, signs, or broadcasts a transaction. Query is optional and limited to 120 characters.",
+    inputSchema: {
+      query: z.string().max(120).optional().describe("Optional search phrase for public x402 services.")
+    }
+  },
+  async ({ query }) => ({
+    content: [{ type: "text", text: JSON.stringify(await discoverPayBoxX402Services(query ?? ""), null, 2) }]
   })
 );
 
