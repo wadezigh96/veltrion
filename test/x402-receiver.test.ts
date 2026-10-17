@@ -11,7 +11,15 @@ const validEnv = {
   X402_RECEIVE_PORT: "8787"
 };
 
-test("x402 receiver is disabled unless explicitly enabled", () => {
+test("x402 receiver is disabled by default without requiring payment configuration", () => {
+  const config = loadX402ReceiveConfig({});
+  assert.equal(config.enabled, false);
+  assert.equal(config.priceAtomic, "10000");
+  assert.equal(config.publicUrl.protocol, "https:");
+  assert.equal(config.host, "127.0.0.1");
+});
+
+test("configured disabled receiver retains its supplied test settings", () => {
   const config = loadX402ReceiveConfig(validEnv);
   assert.equal(config.enabled, false);
   assert.equal(config.priceAtomic, "10000");
