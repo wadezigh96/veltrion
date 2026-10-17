@@ -7,6 +7,7 @@ import { discoverPayBoxMcpTools, listPayBoxWallets } from "./paybox/mcp.js";
 import { inspectSolanaMint } from "./solana/rpc.js";
 import { getSolanaWalletPortfolio } from "./solana/portfolio.js";
 import { getVeltrionLlmConfiguration, runVeltrionAgent } from "./llm/agent.js";
+import { scanDefiOpportunities } from "./defi/opportunities.js";
 
 const server = new McpServer({
   name: "veltrion",
@@ -29,7 +30,7 @@ server.registerTool(
         paybox: await getPayBoxCliStatus(),
         liveWalletAccess: false,
         executionEnabled: false,
-        availableFeatures: ["status", "solana_wallet_portfolio", "paybox_x402_discover", "paybox_x402_preview_pools", "paybox_mcp_discover", "paybox_list_wallets", "solana_token_inspect", "defi_risk_check"],
+        availableFeatures: ["status", "solana_wallet_portfolio", "paybox_x402_discover", "paybox_x402_preview_pools", "paybox_mcp_discover", "paybox_list_wallets", "solana_token_inspect", "defi_risk_check", "defi_opportunity_scan"],
         note: "Status and service discovery are read-only. Portfolio lookup reads only the public address supplied by the caller, with live Solana RPC and public DexScreener price data. No transaction has been sent."
       }, null, 2)
     }]
@@ -232,6 +233,37 @@ server.registerTool(
     }
   }
 );
+
+server.registerTool(
+  "defi_opportunity_scan",
+  {
+    title: "Scan Solana DeFi yield opportunities (read-only)",
+    description: "Fetches public DefiLlama yield/TVL data for Solana, filters by minimum TVL, and flags APY outliers and impermanent-loss/reward risks. Does not inspect private positions, connect a wallet, deposit, stake, sign, or execute transactions.",
+    inputSchema: {
+      minTvlUsd: z.number().min(0).max(1_000_000_000).optional().describe("Minimum pool TVL in USD (default 10000)."),
+      limit: z.number().int().min(1).max(100).optional().describe("Maximum opportunities to return (default 20).")
+    }
+  },
+  async ({ minTvlUsd, limit }) => {
+    try {
+      const result = await scanDefiOpportunities({
+        ...(minTvlUsd === undefined ? {} : { minTvlUsd }),
+        ...(limit === undefined ? {} : { limit })
+      });
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (error) {
+      const code = error instanceof Error && /^[A-Z0-9_]+$/.test(error.message)
+        ? error.message
+        : "DEFI_OPPORTUNITY_SCAN_FAILED";
+      return { content: [{ type: "text", text: JSON.stringify({
+        error: code,
+        executionEnabled: false,
+        note: "Yield scan failed closed. No wallet or transaction was accessed."
+      }, null, 2) }] };
+    }
+  }
+);
+
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
