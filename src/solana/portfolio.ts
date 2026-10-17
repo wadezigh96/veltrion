@@ -11,26 +11,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function encodeBase58(bytes: Uint8Array): string {
-  const alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-  let zeros = 0;
-  while (zeros < bytes.length && bytes[zeros] === 0) zeros++;
-  const digits: number[] = [];
-  for (let i = zeros; i < bytes.length; i++) {
-    let carry = bytes[i]!;
-    for (let j = 0; j < digits.length; j++) {
-      carry += digits[j]! * 256;
-      digits[j] = carry % 58;
-      carry = Math.floor(carry / 58);
-    }
-    while (carry > 0) {
-      digits.push(carry % 58);
-      carry = Math.floor(carry / 58);
-    }
-  }
-  return "1".repeat(zeros) + digits.reverse().map(digit => alphabet[digit]!).join("");
-}
-
 function formatAtomic(value: bigint, decimals: number): string {
   if (decimals === 0) return value.toString();
   const base = 10n ** BigInt(decimals);
@@ -73,24 +53,28 @@ function parseTokenAccounts(value: unknown, program: "spl-token" | "token-2022")
       throw new Error("SOLANA_RPC_INVALID_TOKEN_ACCOUNT");
     }
     const data = item.account.data;
-    if (!Array.isArray(data) || typeof data[0] !== "string" || data[0].length > 20_000) {
+    if (!isRecord(data) || data.program !== "spl-token" && data.program !== "spl-token-2022" ||
+        !isRecord(data.parsed) || !isRecord(data.parsed.info)) {
       throw new Error("SOLANA_RPC_INVALID_TOKEN_DATA");
     }
-    const bytes = Buffer.from(data[0], "base64");
-    if (bytes.length < 72 || bytes.length > 10_000) throw new Error("SOLANA_RPC_INVALID_TOKEN_DATA");
+    const info = data.parsed.info;
+    const tokenAmount = info.tokenAmount;
+    if (typeof info.mint !== "string" || !BASE58_ADDRESS.test(info.mint) || !isRecord(tokenAmount) ||
+        typeof tokenAmount.amount !== "string" || !/^\d{1,40}$/.test(tokenAmount.amount) ||
+        typeof tokenAmount.decimals !== "number" || !Number.isInteger(tokenAmount.decimals) ||
+        tokenAmount.decimals < 0 || tokenAmount.decimals > 18 ||
+        typeof tokenAmount.uiAmountString !== "string" || tokenAmount.uiAmountString.length > 100) {
+      throw new Error("SOLANA_RPC_INVALID_TOKEN_AMOUNT");
+    }
     if (typeof item.account.lamports !== "number" || !Number.isSafeInteger(item.account.lamports) || item.account.lamports < 0) {
       throw new Error("SOLANA_RPC_INVALID_TOKEN_ACCOUNT");
     }
-    const mint = encodeBase58(bytes.subarray(0, 32));
-    const amount = bytes.readBigUInt64LE(64);
-    const decimals = bytes[72];
-    if (decimals === undefined) throw new Error("SOLANA_RPC_INVALID_TOKEN_DATA");
     return {
       tokenAccount: item.pubkey,
-      mint,
-      amountAtomic: amount.toString(),
-      decimals,
-      amount: formatAtomic(amount, decimals),
+      mint: info.mint,
+      amountAtomic: tokenAmount.amount,
+      decimals: tokenAmount.decimals,
+      amount: tokenAmount.uiAmountString,
       tokenProgram: program,
       accountLamports: item.account.lamports
     };
@@ -138,8 +122,8 @@ export async function getSolanaWalletPortfolio(address: string, requestedLimit =
 
   const [balanceRaw, splRaw, token2022Raw, signaturesRaw] = await Promise.all([
     rpc("getBalance", [address, { commitment: "confirmed" }]),
-    rpc("getTokenAccountsByOwner", [address, { programId: SPL_TOKEN_PROGRAM }, { encoding: "base64", commitment: "confirmed" }]),
-    rpc("getTokenAccountsByOwner", [address, { programId: TOKEN_2022_PROGRAM }, { encoding: "base64", commitment: "confirmed" }]),
+    rpc("getTokenAccountsByOwner", [address, { programId: SPL_TOKEN_PROGRAM }, { encoding: "jsonParsed", commitment: "confirmed" }]),
+    rpc("getTokenAccountsByOwner", [address, { programId: TOKEN_2022_PROGRAM }, { encoding: "jsonParsed", commitment: "confirmed" }]),
     rpc("getSignaturesForAddress", [address, { limit: requestedLimit }, { commitment: "confirmed" }])
   ]);
 
