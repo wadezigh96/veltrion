@@ -152,16 +152,16 @@ export function createX402ReceiveServer(config: X402ReceiveConfig) {
 
       let paymentPayload: unknown;
       try { paymentPayload = decodeHeader(header); }
-      catch { return sendJson(res, 402, { error: "INVALID_PAYMENT_SIGNATURE", ...paymentRequired }, { "payment-required": encodeHeader(paymentRequired) }); }
+      catch { return sendJson(res, 402, { ...paymentRequired, error: "INVALID_PAYMENT_SIGNATURE" }, { "payment-required": encodeHeader(paymentRequired) }); }
       if (!matchesRequirements(paymentPayload, requirements)) {
-        return sendJson(res, 402, { error: "PAYMENT_REQUIREMENTS_MISMATCH", ...paymentRequired }, { "payment-required": encodeHeader(paymentRequired) });
+        return sendJson(res, 402, { ...paymentRequired, error: "PAYMENT_REQUIREMENTS_MISMATCH" }, { "payment-required": encodeHeader(paymentRequired) });
       }
 
       let verification: Record<string, unknown>;
       try { verification = await facilitatorCall(config.facilitatorUrl, "verify", paymentPayload, requirements); }
       catch { return sendJson(res, 503, { error: "PAYMENT_VERIFICATION_UNAVAILABLE", paymentExecutionEnabled: false }); }
       if (verification.isValid !== true) {
-        return sendJson(res, 402, { error: "PAYMENT_NOT_VALID", ...paymentRequired }, { "payment-required": encodeHeader(paymentRequired) });
+        return sendJson(res, 402, { ...paymentRequired, error: "PAYMENT_NOT_VALID" }, { "payment-required": encodeHeader(paymentRequired) });
       }
 
       // Build the resource only after verification; settle before disclosing it.
