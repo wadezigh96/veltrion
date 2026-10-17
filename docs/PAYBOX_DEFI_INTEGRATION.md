@@ -35,6 +35,10 @@ Use only tools exposed by the authenticated PayBox MCP session and permitted by 
 
 Tool names and exact input schemas must be discovered from the live authorized MCP server. Do not assume a tool exists based only on this plan.
 
+## Current read-only Solana support
+
+The `solana_token_inspect` MCP tool reads `getAccountInfo` from Solana mainnet RPC using `confirmed` commitment. It accepts SPL Token and Token-2022 mint accounts, parses the mint layout, preserves supply as an exact atomic integer string, applies an eight-second timeout, and fails closed on malformed account data. This is not a token-price or safety guarantee; metadata and authorities must still be assessed before trading.
+
 ## Direct PayBox MCP status
 
 - Implemented: direct MCP Streamable HTTP transport to `https://api.paybox.sh/mcp`, using a local `PAYBOX_ACCESS_TOKEN` bearer token, exposed as `paybox_mcp_discover`.
