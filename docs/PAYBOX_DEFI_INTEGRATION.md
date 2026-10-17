@@ -2,7 +2,7 @@
 
 ## Objective
 
-VELTRION currently acts as a Solana DeFi intelligence MCP server and uses the official PayBox SDK REST client for a read-only credential check. A direct PayBox MCP protocol client is a separate future step. PayBox remains the wallet authorization, signing, and supported transaction execution boundary.
+VELTRION currently acts as a Solana DeFi intelligence MCP server and includes a direct PayBox MCP Streamable HTTP discovery client. It only performs a handshake and `list_tools`; it does not invoke provider tools. PayBox remains the wallet authorization, signing, and supported transaction execution boundary.
 
 **Important:** a direct MCP connection requires an authenticated PayBox MCP session (OAuth 2.1). A URL alone is not authentication. Never hardcode or commit access tokens. Until the OAuth/client flow is implemented and tested, the integration must use a mock adapter and must not claim to be connected.
 
@@ -35,13 +35,13 @@ Use only tools exposed by the authenticated PayBox MCP session and permitted by 
 
 Tool names and exact input schemas must be discovered from the live authorized MCP server. Do not assume a tool exists based only on this plan.
 
-## PayBox SDK/API and direct MCP distinction
+## Direct PayBox MCP status
 
-- Implemented now: `@paybox-sh/sdk` configured client calling `listCredentials()` over PayBox's SDK/API path, exposed as `paybox_readonly_status`.
-- Implemented now: direct MCP Streamable HTTP client to `https://api.paybox.sh/mcp`, using a local `PAYBOX_ACCESS_TOKEN` bearer token, exposed as `paybox_mcp_discover`. It performs only `list_tools` discovery and sanitizes the result to tool names/descriptions.
-- Not implemented yet: an in-app OAuth 2.1 authorization-code/PKCE flow. The current direct MCP tool requires a token provisioned locally by the supported PayBox flow; it does not initiate OAuth itself.
-- The read-only tool requires an actual valid credential-list response before reporting `authenticated`; malformed data and errors fail closed, and raw exception text is suppressed.
+- Implemented: direct MCP Streamable HTTP transport to `https://api.paybox.sh/mcp`, using a local `PAYBOX_ACCESS_TOKEN` bearer token, exposed as `paybox_mcp_discover`.
+- This tool performs only the MCP handshake and `list_tools` discovery. It returns a bounded list of tool names and descriptions, and never calls the discovered tools.
+- Not implemented: an in-app OAuth 2.1 authorization-code/PKCE flow. The token must be provisioned locally using PayBox's supported flow; VELTRION does not request or store it.
 - No live authenticated account has been tested in this development session.
+- The `@paybox-sh/sdk` REST package was removed after the production dependency audit identified a high-severity transitive `ws` vulnerability with no fix available in the current `viem` dependency chain. Prefer the direct MCP path while that dependency issue remains unresolved.
 
 ## MCP connection design
 
@@ -90,6 +90,6 @@ Any material change in token, amount, recipient, chain, or slippage requires a n
 
 ## Current status
 
-The repository now depends on the official `@paybox-sh/sdk` and exposes `paybox_readonly_status`. That tool calls `PayboxClient.fromConfig()` and `listCredentials()`, then emits only a bounded metadata allowlist (credential id, display name, and kind). It suppresses raw provider errors and rejects malformed responses. This is SDK/API integration surfaced through VELTRION's MCP server, not a direct PayBox MCP session. Unit tests cover the sanitizer, malformed responses, and output bounds.
+The repository now uses the MCP SDK to connect directly to PayBox MCP and discover tools. It does not invoke any discovered provider tool. Build and unit tests must pass, and the production dependency audit must be green before the current commit is considered verified.
 
-This is a real SDK-backed read-only integration path, but it is **not yet verified against the user's authenticated PayBox account**. GitHub Actions build and tests passed on commit `d910880`, including direct PayBox MCP discovery compilation and the current unit-test suite. Runtime authentication against the user's PayBox account is still unverified. No swap/transfer execution tool is exposed by VELTRION yet. The discovered PayBox tool catalogue is informational only and cannot trigger a provider operation. Before adding one, verify the exact SDK request/response schema and Solana chain support, then test user approval, denied/pending outcomes, timeout reconciliation using the same request ID, duplicate prevention, and on-chain status verification. Mainnet execution remains disabled.
+This is a real SDK-backed read-only integration path, but it is **not yet verified against the user's authenticated PayBox account**. GitHub Actions build and tests passed on commit `d910880`. The production dependency audit then identified a high-severity transitive dependency issue, so the SDK REST dependency was removed and a new audit is running. Runtime authentication against the user's PayBox account is still unverified. No swap/transfer execution tool is exposed by VELTRION yet. The discovered PayBox tool catalogue is informational only and cannot trigger a provider operation. Before adding one, verify the exact SDK request/response schema and Solana chain support, then test user approval, denied/pending outcomes, timeout reconciliation using the same request ID, duplicate prevention, and on-chain status verification. Mainnet execution remains disabled.
