@@ -12,7 +12,10 @@ export type SolanaMintInspection = {
   initialized: boolean;
   mintAuthorityEnabled: boolean;
   freezeAuthorityEnabled: boolean;
+  /** Lamports held by the mint account itself; this is not the wallet's SOL balance or a rent-cost estimate. */
   accountLamports: number;
+  /** Exact decimal SOL representation of accountLamports, calculated without floating-point arithmetic. */
+  accountLamportsSol: string;
   source: string;
   executionEnabled: false;
 };
@@ -28,6 +31,14 @@ type RpcMintResponse = {
   };
   error?: unknown;
 };
+
+export function formatLamportsAsSol(lamports: number): string {
+  if (!Number.isSafeInteger(lamports) || lamports < 0) throw new Error("INVALID_ACCOUNT_LAMPORTS");
+  const value = BigInt(lamports);
+  const whole = value / 1_000_000_000n;
+  const fraction = (value % 1_000_000_000n).toString().padStart(9, "0").replace(/0+$/, "");
+  return fraction ? `${whole}.${fraction}` : whole.toString();
+}
 
 export function parseSolanaMintAccount(mint: string, value: unknown): SolanaMintInspection {
   if (!BASE58_ADDRESS.test(mint)) throw new Error("INVALID_MINT_FORMAT");
@@ -62,6 +73,7 @@ export function parseSolanaMintAccount(mint: string, value: unknown): SolanaMint
     mintAuthorityEnabled: bytes.readUInt32LE(0) === 1,
     freezeAuthorityEnabled: bytes.readUInt32LE(46) === 1,
     accountLamports: account.lamports,
+    accountLamportsSol: formatLamportsAsSol(account.lamports),
     source: SOLANA_RPC_URL,
     executionEnabled: false
   };
