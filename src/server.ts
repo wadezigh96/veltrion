@@ -317,7 +317,7 @@ server.registerTool(
       credentialId: z.string().trim().min(1).max(200).describe("Granted PayBox wallet credential ID from paybox_list_wallets."),
       srcToken: z.string().min(1).max(44).describe('Source SPL mint address or "native" for SOL.'),
       dstToken: z.string().min(1).max(44).describe('Destination SPL mint address or "native" for SOL.'),
-      amount: z.string().regex(/^[1-9]\\d{0,39}$/).describe("Exact source-token atomic units; not a decimal UI amount."),
+      amount: z.string().regex(/^[1-9]\d{0,39}$/).describe("Exact source-token atomic units; not a decimal UI amount."),
       slippageBps: z.number().int().min(0).max(300).describe("Slippage tolerance in basis points; max 300 bps (3%)."),
       confirmed: z.literal(true).describe("Must be true only after the user explicitly confirms the exact swap details.")
     }
@@ -342,7 +342,7 @@ server.registerTool(
       credentialId: z.string().trim().min(1).max(200).describe("Granted PayBox wallet credential ID from paybox_list_wallets."),
       to: z.string().min(32).max(44).regex(/^[1-9A-HJ-NP-Za-km-z]+$/).describe("Recipient Solana address."),
       token: z.string().min(1).max(44).optional().describe('SPL token mint; omit or use "native" for SOL.'),
-      amount: z.string().regex(/^[1-9]\\d{0,39}$/).describe("Exact token atomic units (lamports for SOL)."),
+      amount: z.string().regex(/^[1-9]\d{0,39}$/).describe("Exact token atomic units (lamports for SOL)."),
       confirmed: z.literal(true).describe("Must be true only after the user explicitly confirms the exact transfer details.")
     }
   },
