@@ -2,7 +2,7 @@
 
 ## Objective
 
-VELTRION will act as a Solana DeFi intelligence MCP server and, in a later guarded phase, an MCP client of PayBox. PayBox remains the wallet authorization, signing, and supported transaction execution boundary.
+VELTRION currently acts as a Solana DeFi intelligence MCP server and uses the official PayBox SDK REST client for a read-only credential check. A direct PayBox MCP protocol client is a separate future step. PayBox remains the wallet authorization, signing, and supported transaction execution boundary.
 
 **Important:** a direct MCP connection requires an authenticated PayBox MCP session (OAuth 2.1). A URL alone is not authentication. Never hardcode or commit access tokens. Until the OAuth/client flow is implemented and tested, the integration must use a mock adapter and must not claim to be connected.
 
@@ -34,6 +34,13 @@ Use only tools exposed by the authenticated PayBox MCP session and permitted by 
 | Transaction verification | PayBox request status and/or Solana signature confirmation | Report success only when terminal status and confirmation are verified |
 
 Tool names and exact input schemas must be discovered from the live authorized MCP server. Do not assume a tool exists based only on this plan.
+
+## PayBox SDK/API and direct MCP distinction
+
+- Implemented now: `@paybox-sh/sdk` configured client calling `listCredentials()` over PayBox's SDK/API path, exposed as the VELTRION MCP tool `paybox_readonly_status`.
+- Not implemented yet: a direct MCP client session to `https://api.paybox.sh/mcp`, including transport negotiation and OAuth handling inside VELTRION.
+- The read-only tool requires an actual valid credential-list response before reporting `authenticated`; malformed data and errors fail closed, and raw exception text is suppressed.
+- No live authenticated account has been tested in this development session.
 
 ## MCP connection design
 
@@ -82,6 +89,6 @@ Any material change in token, amount, recipient, chain, or slippage requires a n
 
 ## Current status
 
-The repository now depends on the official `@paybox-sh/sdk` and exposes `paybox_readonly_status`. That tool calls the SDK's documented `PayboxClient.fromConfig()` and `listCredentials()` methods, then emits only a bounded metadata allowlist (credential id, display name, and kind). It suppresses raw provider errors to avoid leaking request details. Unit tests cover the sanitizer, malformed responses, and output bounds.
+The repository now depends on the official `@paybox-sh/sdk` and exposes `paybox_readonly_status`. That tool calls `PayboxClient.fromConfig()` and `listCredentials()`, then emits only a bounded metadata allowlist (credential id, display name, and kind). It suppresses raw provider errors and rejects malformed responses. This is SDK/API integration surfaced through VELTRION's MCP server, not a direct PayBox MCP session. Unit tests cover the sanitizer, malformed responses, and output bounds.
 
-This is a real SDK-backed read-only integration path, but it is **not yet verified against the user's authenticated PayBox account**. Build/test status must be checked in GitHub Actions. No swap/transfer execution tool is exposed by VELTRION yet. Before adding one, verify the exact SDK request/response schema and Solana chain support, then test user approval, denied/pending outcomes, timeout reconciliation using the same request ID, duplicate prevention, and on-chain status verification. Mainnet execution remains disabled.
+This is a real SDK-backed read-only integration path, but it is **not yet verified against the user's authenticated PayBox account**. Build and tests passed on commit `3287d1e`; subsequent changes must also pass GitHub Actions before being considered verified. No swap/transfer execution tool is exposed by VELTRION yet. Before adding one, verify the exact SDK request/response schema and Solana chain support, then test user approval, denied/pending outcomes, timeout reconciliation using the same request ID, duplicate prevention, and on-chain status verification. Mainnet execution remains disabled.
