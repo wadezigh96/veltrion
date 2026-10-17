@@ -8,7 +8,7 @@ VELTRION is a separate project for researching Solana DeFi opportunities, valida
 
 - [x] Initial repository and security-design review
 - [x] Read-only-first architecture defined
-- [x] MCP server tools for status, DeFi risk checks, PayBox discovery/wallet metadata, and Solana mint inspection
+- [x] MCP server tools for status, DeFi risk checks, PayBox discovery/wallet metadata, Solana mint inspection, live portfolio valuation, and transaction activity lookup
 - [x] Initial unit tests and security policy tests written
 - [x] PayBox adapter boundary with mock-only and unconfigured fail-closed modes
 - [x] GitHub Actions build, tests, and production dependency audit passed on commit `8b01421`
@@ -58,14 +58,14 @@ VELTRION should not bypass PayBox by handling wallet private keys or broadcastin
 - `veltrion_status` — reports current configuration and confirms execution is disabled.
 - `defi_risk_check` — validates a proposed action without signing or broadcasting.
 - `solana_token_inspect` — reads a confirmed Solana mint account and reports token program, decimals, atomic supply, initialization, and authority flags.
+- `solana_wallet_portfolio` — reads SOL balance, SPL/Token-2022 token-account balances, and a bounded recent signature history for a caller-supplied public address. No wallet connection or signing is required.
 - `paybox_mcp_discover` — directly connects to PayBox MCP using local `PAYBOX_ACCESS_TOKEN` and lists tool names/descriptions only.
 - `paybox_list_wallets` — invokes only PayBox's read-only `list_credentials` tool and returns allowlisted wallet metadata.
 
 ### Planned read-only tools
 
-- `solana_wallet_portfolio` — show balances through an explicitly authorized read source.
 - `defi_opportunity_scan` — summarize supported, sourced opportunities with freshness and risk notes.
-- `transaction_status` — inspect a known signature/request status.
+- `transaction_status` — inspect a known signature/request status. Detailed transaction decoding and protocol-specific farming position tracking remain future work.
 
 ### Future guarded actions (not enabled in the initial release)
 
@@ -98,10 +98,9 @@ Tool availability must reflect actual implemented and tested functionality. Do n
 
 ## Development
 
-The implementation stack has not yet been locked. Prefer a small, typed Node.js/TypeScript MCP service with a clear provider adapter boundary, deterministic tests, and no server-side private-key handling.
+The implementation uses a typed Node.js/TypeScript MCP service with a clear provider adapter boundary and no server-side private-key handling.
 
 The legacy mock adapter rejects swap requests. VELTRION now uses the official MCP client library to perform a direct Streamable HTTP handshake and `list_tools` discovery using a locally supplied `PAYBOX_ACCESS_TOKEN`. The discovery tool only lists sanitized tool names/descriptions; it never invokes provider tools. The PayBox REST SDK was deliberately removed after CI's production dependency audit found a high-severity transitive `ws` vulnerability with no available fix in that dependency chain. Swaps and transfers remain disabled. See [SECURITY.md](./SECURITY.md) and [docs/PAYBOX_DEFI_INTEGRATION.md](./docs/PAYBOX_DEFI_INTEGRATION.md).
-
 
 ## Local PayBox setup (read-only first)
 
@@ -111,3 +110,13 @@ The legacy mock adapter rejects swap requests. VELTRION now uses the official MC
 4. Call `paybox_mcp_discover` to verify the direct MCP handshake and list available tool names/descriptions. This does not call those tools or connect a wallet.
 
 Do not paste `PAYBOX_ACCESS_TOKEN` into chat, source files, MCP tool arguments, or GitHub issues. Do not paste credentials into chat or commit them. VELTRION's swap/transfer execution tools are intentionally not enabled yet.
+
+## Verify live portfolio data (no mock)
+
+Run a real read-only lookup against Solana mainnet RPC and DexScreener using a public wallet address you control. The address is read from a local environment variable and is not written to source code. Do not use a seed phrase or private key.
+
+```bash
+VELTRION_PUBLIC_WALLET='YOUR_PUBLIC_SOLANA_ADDRESS' npm run verify:portfolio:live
+```
+
+This command prints a sanitized summary only. It does not sign, pay, or submit transactions. Token prices are estimates; unsupported or illiquid assets may be unpriced, and activity categories are heuristics rather than authoritative protocol decoding.

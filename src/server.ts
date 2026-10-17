@@ -5,6 +5,7 @@ import { checkDefiRequest } from "./policy.js";
 import { getPayBoxCliStatus, discoverPayBoxX402Services, previewPayBoxPoolPayment } from "./paybox/cli.js";
 import { discoverPayBoxMcpTools, listPayBoxWallets } from "./paybox/mcp.js";
 import { inspectSolanaMint } from "./solana/rpc.js";
+import { getSolanaWalletPortfolio } from "./solana/portfolio.js";
 
 const server = new McpServer({
   name: "veltrion",
@@ -27,11 +28,44 @@ server.registerTool(
         paybox: await getPayBoxCliStatus(),
         liveWalletAccess: false,
         executionEnabled: false,
-        availableFeatures: ["status", "paybox_x402_discover", "paybox_x402_preview_pools", "paybox_mcp_discover", "paybox_list_wallets", "solana_token_inspect", "defi_risk_check"],
-        note: "Status and service discovery are read-only. No wallet has been accessed and no transaction has been sent."
+        availableFeatures: ["status", "solana_wallet_portfolio", "paybox_x402_discover", "paybox_x402_preview_pools", "paybox_mcp_discover", "paybox_list_wallets", "solana_token_inspect", "defi_risk_check"],
+        note: "Status and service discovery are read-only. Portfolio lookup reads only the public address supplied by the caller, with live Solana RPC and public DexScreener price data. No transaction has been sent."
       }, null, 2)
     }]
   })
+);
+
+server.registerTool(
+  "solana_wallet_portfolio",
+  {
+    title: "Solana wallet portfolio and recent activity (read-only)",
+    description: "Reads live Solana mainnet SOL/token balances, recent transaction details and token deltas, and estimates USD value from DexScreener liquidity pairs. Transaction categories are heuristic; total USD is null if any token account or native SOL cannot be priced. Does not connect to a wallet, reveal private information, sign, or send transactions.",
+    inputSchema: {
+      address: z.string().min(32).max(44).regex(/^[1-9A-HJ-NP-Za-km-z]+$/).describe("Public Solana wallet address. Never provide a seed phrase or private key."),
+      activityLimit: z.number().int().min(1).max(25).optional().describe("Maximum recent signatures to return (default 10, max 25).")
+    }
+  },
+  async ({ address, activityLimit }) => {
+    try {
+      const result = await getSolanaWalletPortfolio(address, activityLimit ?? 10);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (error) {
+      const code = error instanceof Error && /^[A-Z0-9_]+$/.test(error.message)
+        ? error.message
+        : "SOLANA_PORTFOLIO_LOOKUP_FAILED";
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            address,
+            error: code,
+            executionEnabled: false,
+            note: "Portfolio lookup failed closed. No transaction was requested."
+          }, null, 2)
+        }]
+      };
+    }
+  }
 );
 
 server.registerTool(
