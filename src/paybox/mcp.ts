@@ -220,8 +220,12 @@ export async function listPayBoxWallets(
   const client = new Client({ name: "veltrion-paybox-wallet-read", version: "0.1.0" });
   const transport = new StreamableHTTPClientTransport(
     new URL("https://api.paybox.sh/mcp"),
-    { requestInit: { signal: AbortSignal.timeout(10_000),
-        headers: { Authorization: `Bearer ${accessToken}` } } }
+    {
+      requestInit: {
+        signal: AbortSignal.timeout(10_000),
+        headers: { Authorization: `Bearer ${accessToken}` }
+      }
+    }
   );
 
   try {
