@@ -38,6 +38,7 @@ Tool names and exact input schemas must be discovered from the live authorized M
 ## Direct PayBox MCP status
 
 - Implemented: direct MCP Streamable HTTP transport to `https://api.paybox.sh/mcp`, using a local `PAYBOX_ACCESS_TOKEN` bearer token, exposed as `paybox_mcp_discover`.
+- Implemented: `paybox_list_wallets` calls only the read-only `list_credentials` provider tool and returns an allowlist of wallet credential ID, display name, approval mode, address, and chain names. Card, secret, ungranted, and raw provider data are excluded.
 - This tool performs only the MCP handshake and `list_tools` discovery. It returns a bounded list of tool names and descriptions, and never calls the discovered tools.
 - Not implemented: an in-app OAuth 2.1 authorization-code/PKCE flow. The token must be provisioned locally using PayBox's supported flow; VELTRION does not request or store it.
 - No live authenticated account has been tested in this development session.
