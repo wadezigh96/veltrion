@@ -27,7 +27,7 @@ server.registerTool(
         paybox: await getPayBoxCliStatus(),
         liveWalletAccess: false,
         executionEnabled: false,
-        availableFeatures: ["status", "paybox_x402_discover", "paybox_mcp_discover", "paybox_list_wallets", "solana_token_inspect", "defi_risk_check"],
+        availableFeatures: ["status", "paybox_x402_discover", "paybox_x402_preview_pools", "paybox_mcp_discover", "paybox_list_wallets", "solana_token_inspect", "defi_risk_check"],
         note: "Status and service discovery are read-only. No wallet has been accessed and no transaction has been sent."
       }, null, 2)
     }]
