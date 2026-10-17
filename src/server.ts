@@ -3,6 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { checkDefiRequest } from "./policy.js";
 import { MockPayBoxAdapter } from "./paybox/adapter.js";
+import { loadPayBoxReadOnlySnapshot } from "./paybox/live.js";
 
 const paybox = new MockPayBoxAdapter();
 
@@ -27,9 +28,24 @@ server.registerTool(
         paybox: paybox.status(),
         liveWalletAccess: false,
         executionEnabled: false,
-        availableFeatures: ["status", "defi_risk_check"],
+        availableFeatures: ["status", "paybox_readonly_status", "defi_risk_check"],
         note: "No wallet has been accessed and no transaction has been sent."
       }, null, 2)
+    }]
+  })
+);
+
+server.registerTool(
+  "paybox_readonly_status",
+  {
+    title: "PayBox read-only connection check",
+    description: "Checks the official PayBox SDK's existing local authentication and lists only sanitized credential metadata. Never signs or executes.",
+    inputSchema: {}
+  },
+  async () => ({
+    content: [{
+      type: "text",
+      text: JSON.stringify(await loadPayBoxReadOnlySnapshot(), null, 2)
     }]
   })
 );
