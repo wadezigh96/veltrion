@@ -155,7 +155,7 @@ export function summarizeX402Challenge(value: unknown): {
       a.scheme !== "exact" ||
       typeof a.network !== "string" ||
       typeof a.amount !== "string" ||
-      !/^\\d{1,40}$/.test(a.amount) ||
+      !/^\d{1,40}$/.test(a.amount) ||
       typeof a.asset !== "string" ||
       typeof a.payTo !== "string"
     ) throw new Error("X402_INVALID_ACCEPT");
