@@ -9,12 +9,12 @@ VELTRION is a separate project for researching Solana DeFi opportunities, valida
 - [x] Initial repository and security-design review
 - [x] Read-only-first architecture defined
 - [x] MCP server tools for status, DeFi risk checks, PayBox discovery/wallet metadata, Solana mint inspection, live portfolio valuation, and transaction activity lookup
-- [x] Read-only LLM agent via Vercel AI Gateway added on the feature branch; live provider connectivity still requires the opt-in local smoke test
+- [x] Read-only LLM agent via Vercel AI Gateway added on the feature branch; local live provider smoke test previously succeeded; provider/model availability can change
 - [x] Initial unit tests and security policy tests written
 - [x] PayBox adapter boundary with mock-only and unconfigured fail-closed modes
-- [x] GitHub Actions build, tests, and production dependency audit passed on LLM implementation commit `dd332dc`; follow-up smoke-test documentation changes are checked by CI separately
-- [x] Direct PayBox MCP Streamable HTTP discovery tool added (authentication still requires local setup and runtime verification)
-- [x] Removed the PayBox REST SDK after its transitive high-severity dependency issue; production audit passed on `8b01421`
+- [x] GitHub Actions build, tests, and production dependency audit passed on the latest verified feature-branch commit `4716fb1`
+- [x] Direct PayBox MCP Streamable HTTP discovery tool added (live authentication and `list_tools` remain unverified until the documented OAuth token is supplied locally)
+- [x] Removed the PayBox REST SDK after its transitive high-severity dependency issue; production dependency audit passed on the feature branch
 - [ ] Solana mainnet execution review (disabled until explicitly approved)
 
 This project has not been deployed and has not sent any transaction.
@@ -83,7 +83,7 @@ Tool availability must reflect actual implemented and tested functionality. Do n
 - The agent is bounded to at most three tool calls and two model requests per user message. It cannot call PayBox, pay x402 services, sign, or broadcast transactions.
 - Configure `AI_GATEWAY_API_KEY` and `VELTRION_LLM_MODEL` in the local environment or deployment secret settings. Never commit real values. No default model is assumed.
 - The API provider receives the user question and any tool results needed to answer it. Do not submit confidential information. API usage may incur charges under the provider account.
-- GitHub Actions build, unit tests, and production dependency audit passed for the initial implementation. Run the opt-in live smoke test below to verify credentials, model availability, and provider connectivity; it may incur a small model usage charge. No live LLM call has been made by CI.
+- GitHub Actions build, unit tests, and production dependency audit passed for the initial implementation. A local live smoke test was previously successful with a short request and no tools. CI does not make live LLM calls. Repeat the opt-in test only if credentials, model, or provider configuration changes; it may incur usage charges.
 
 ## Security and privacy
 
@@ -115,7 +115,7 @@ The legacy mock adapter rejects swap requests. VELTRION now uses the official MC
 ## Local PayBox setup (read-only first)
 
 1. Install dependencies: `npm install`.
-2. Obtain an access token through PayBox's supported OAuth flow and set `PAYBOX_ACCESS_TOKEN` only in the local process environment or secret manager; never commit it.
+2. Complete PayBox's documented OAuth 2.1 / PKCE flow for the Veltrion client, then provide its access token locally as `PAYBOX_ACCESS_TOKEN`. The PayBox CLI's separate OAuth login does not prove this variable is available. Do not extract tokens from CLI configuration, print them, or commit them.
 3. Start VELTRION with `npm run dev` or build then use `npm start`.
 4. Call `paybox_mcp_discover` to verify the direct MCP handshake and list available tool names/descriptions. This does not call those tools or connect a wallet.
 
