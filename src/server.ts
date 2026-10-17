@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { checkDefiRequest } from "./policy.js";
-import { getPayBoxCliStatus, discoverPayBoxX402Services } from "./paybox/cli.js";
+import { getPayBoxCliStatus, discoverPayBoxX402Services, previewPayBoxPoolPayment } from "./paybox/cli.js";
 import { discoverPayBoxMcpTools, listPayBoxWallets } from "./paybox/mcp.js";
 import { inspectSolanaMint } from "./solana/rpc.js";
 
@@ -45,6 +45,21 @@ server.registerTool(
   },
   async ({ query }) => ({
     content: [{ type: "text", text: JSON.stringify(await discoverPayBoxX402Services(query ?? ""), null, 2) }]
+  })
+);
+
+server.registerTool(
+  "paybox_x402_preview_pools",
+  {
+    title: "Preview Solana pool API x402 payment (no payment)",
+    description: "Sends one unpaid POST to the fixed Solana DeFi pools endpoint to receive and summarize its live x402 402 challenge. Shows accepted networks and price. Never creates a payment header, uses a wallet credential, retries with payment, signs, or broadcasts. This tool cannot buy data.",
+    inputSchema: {
+      limit: z.number().int().min(1).max(50).optional().describe("Number of pools to request (default 3)."),
+      minTvlUsd: z.number().min(0).max(1_000_000_000).optional().describe("Minimum pool TVL in USD (default 10000).")
+    }
+  },
+  async ({ limit, minTvlUsd }) => ({
+    content: [{ type: "text", text: JSON.stringify(await previewPayBoxPoolPayment({ limit, minTvlUsd }), null, 2) }]
   })
 );
 
