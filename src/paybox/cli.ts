@@ -41,7 +41,7 @@ export function sanitizePayBoxPublicResult(value: unknown, depth = 0): unknown {
 }
 
 export type PayBoxCliStatus = {
-  connection: "authenticated" | "not-configured" | "error";
+  connection: "configured" | "not-configured" | "error";
   auth: "oauth" | "api-key" | "unknown";
   canSign: boolean;
   executionEnabled: false;
@@ -59,11 +59,11 @@ export async function getPayBoxCliStatus(): Promise<PayBoxCliStatus> {
       return { connection: "error", auth, canSign: false, executionEnabled: false, detail: "PayBox CLI endpoint was not the expected official HTTPS endpoint." };
     }
     return {
-      connection: auth === "unknown" ? "not-configured" : "authenticated",
+      connection: auth === "unknown" ? "not-configured" : "configured",
       auth,
       canSign: status.canSign === true,
       executionEnabled: false,
-      detail: "Read-only CLI authentication status checked. No wallet action or payment was requested."
+      detail: "Read-only CLI configuration status checked. This does not verify token freshness or call the remote API; no wallet action or payment was requested."
     };
   } catch {
     return {
