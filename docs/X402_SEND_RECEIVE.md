@@ -2,7 +2,7 @@
 
 ## Receive endpoint (implemented, disabled by default)
 
-A standalone Node HTTP service implements a deliberately narrow x402 V2 **exact USDC on Base mainnet** receiver. It exposes:
+VELTRION now supports two adapters around the same guarded handler: a standalone Node HTTP service (`npm run x402:serve`) and a Vercel Node.js serverless function at `api/paid/summary.ts`. Both implement a deliberately narrow x402 V2 **exact USDC on Base mainnet** receiver. The Vercel route is opt-in and remains disabled unless explicitly configured. It exposes:
 
 - `GET /health` — reports configuration only.
 - `GET /api/paid/summary` — emits an x402 V2 `402 Payment Required` challenge until a valid `PAYMENT-SIGNATURE` is supplied; verifies with the configured facilitator, settles the same payload, and only releases the resource after settlement succeeds.
@@ -21,7 +21,7 @@ Set these values in the host's secret/environment settings, never in Git:
 - `X402_PUBLIC_URL=https://YOUR-DEPLOYED-HOST/` — public HTTPS origin of this receiver.
 - Optional `X402_RECEIVE_HOST=127.0.0.1` and `X402_RECEIVE_PORT=8787`.
 
-Start locally with `npm run x402:serve`. The default bind address is loopback. For public hosting, bind to the host's required interface and deploy this process behind HTTPS. This standalone listener is not automatically served by the existing stdio MCP process and is not a Vercel serverless route. Do not set `X402_RECEIVE_ENABLED=true` until the receiving address, price, facilitator support, deployment, and live conformance checks are verified.
+For local tests, run `npm run x402:serve`; the standalone listener binds to loopback by default. For Vercel, deploy the repository and configure the required environment variables in the Vercel project settings. The serverless route uses the same payment handler and checks facilitator support before handling a paid request. Set `X402_PUBLIC_URL` to the actual HTTPS origin, such as your deployed Vercel domain. The route can exist while disabled; it returns a fail-closed response until configured. Do not set `X402_RECEIVE_ENABLED=true` until the intended receiving address, price, deployment URL, facilitator support, and live conformance checks are verified. The paid content is still demo content and must be replaced with reviewed, sourced data before charging real users.
 
 ## Send x402 (PayBox)
 
