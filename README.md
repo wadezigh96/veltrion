@@ -63,6 +63,7 @@ VELTRION should not bypass PayBox by handling wallet private keys or broadcastin
 - `defi_opportunity_scan` — summarize supported, sourced opportunities with freshness and risk notes.
 - `defi_risk_check` — validate a proposed action without signing or broadcasting.
 - `paybox_mcp_discover` — directly connect to PayBox MCP using local `PAYBOX_ACCESS_TOKEN` and list tool names/descriptions only; it never invokes discovered tools.
+- `paybox_list_wallets` — invoke only PayBox's read-only `list_credentials` tool and return allowlisted wallet metadata (no cards or secrets).
 - `transaction_status` — inspect a known signature/request status.
 
 ### Future guarded actions (not enabled in the initial release)
