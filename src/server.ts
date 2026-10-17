@@ -3,7 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { checkDefiRequest } from "./policy.js";
 import { MockPayBoxAdapter } from "./paybox/adapter.js";
-import { discoverPayBoxMcpTools } from "./paybox/mcp.js";
+import { discoverPayBoxMcpTools, listPayBoxWallets } from "./paybox/mcp.js";
 
 const paybox = new MockPayBoxAdapter();
 
@@ -28,7 +28,7 @@ server.registerTool(
         payboxExecutionAdapter: paybox.status(),
         liveWalletAccess: false,
         executionEnabled: false,
-        availableFeatures: ["status", "paybox_mcp_discover", "defi_risk_check"],
+        availableFeatures: ["status", "paybox_mcp_discover", "paybox_list_wallets", "defi_risk_check"],
         note: "No wallet has been accessed and no transaction has been sent."
       }, null, 2)
     }]
@@ -46,6 +46,21 @@ server.registerTool(
     content: [{
       type: "text",
       text: JSON.stringify(await discoverPayBoxMcpTools(), null, 2)
+    }]
+  })
+);
+
+server.registerTool(
+  "paybox_list_wallets",
+  {
+    title: "List PayBox wallets (read-only)",
+    description: "Calls only PayBox's read-only list_credentials tool and returns allowlisted wallet metadata. Does not expose cards/secrets, request signatures, or move funds.",
+    inputSchema: {}
+  },
+  async () => ({
+    content: [{
+      type: "text",
+      text: JSON.stringify(await listPayBoxWallets(), null, 2)
     }]
   })
 );
