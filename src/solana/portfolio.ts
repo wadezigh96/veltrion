@@ -36,7 +36,10 @@ async function rpc(method: string, params: unknown[]): Promise<unknown> {
   const raw: unknown = await response.json();
   if (!isRecord(raw)) throw new Error("SOLANA_RPC_INVALID_RESPONSE");
   const envelope = raw as RpcEnvelope;
-  if (envelope.error) {\n    const code = isRecord(envelope.error) && typeof envelope.error.code === "number" ? envelope.error.code : null;\n    throw new Error(code === null ? "SOLANA_RPC_REQUEST_ERROR" : `SOLANA_RPC_REQUEST_ERROR_${code}`);\n  }
+  if (envelope.error) {
+    const code = isRecord(envelope.error) && typeof envelope.error.code === "number" ? envelope.error.code : null;
+    throw new Error(code === null ? "SOLANA_RPC_REQUEST_ERROR" : "SOLANA_RPC_REQUEST_ERROR_" + code);
+  }
   if (!("result" in envelope)) throw new Error("SOLANA_RPC_INVALID_RESPONSE");
   return envelope.result;
 }
