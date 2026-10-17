@@ -105,3 +105,159 @@ export async function discoverPayBoxX402Services(query = ""): Promise<{
     };
   }
 }
+
+
+const SOLDEFI_POOLS_URL = "https://soldefi.thomenz.me/v1/solana/pools/top";
+const SOLANA_MAINNET = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
+const SOLANA_USDC = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+const BASE_MAINNET = "eip155:8453";
+const BASE_USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+
+type X402Accept = {
+  scheme?: unknown;
+  network?: unknown;
+  amount?: unknown;
+  asset?: unknown;
+  payTo?: unknown;
+  maxTimeoutSeconds?: unknown;
+};
+
+export function summarizeX402Challenge(value: unknown): {
+  version: number | null;
+  accepts: Array<{
+    scheme: string;
+    network: string;
+    amountAtomic: string;
+    asset: string;
+    payTo: string;
+    maxTimeoutSeconds: number | null;
+    price: string | null;
+  }>;
+} {
+  if (!value || typeof value !== "object") throw new Error("X402_INVALID_CHALLENGE");
+  const challenge = value as Record<string, unknown>;
+  const rawAccepts = challenge.accepts;
+  if (!Array.isArray(rawAccepts) || rawAccepts.length === 0 || rawAccepts.length > 10) {
+    throw new Error("X402_INVALID_ACCEPTS");
+  }
+  const accepts = rawAccepts.map((item): {
+    scheme: string;
+    network: string;
+    amountAtomic: string;
+    asset: string;
+    payTo: string;
+    maxTimeoutSeconds: number | null;
+    price: string | null;
+  } => {
+    if (!item || typeof item !== "object") throw new Error("X402_INVALID_ACCEPT");
+    const a = item as X402Accept;
+    if (
+      a.scheme !== "exact" ||
+      typeof a.network !== "string" ||
+      typeof a.amount !== "string" ||
+      !/^\\d{1,40}$/.test(a.amount) ||
+      typeof a.asset !== "string" ||
+      typeof a.payTo !== "string"
+    ) throw new Error("X402_INVALID_ACCEPT");
+    let price: string | null = null;
+    if ((a.network === SOLANA_MAINNET && a.asset === SOLANA_USDC) ||
+        (a.network === BASE_MAINNET && a.asset.toLowerCase() === BASE_USDC.toLowerCase())) {
+      const atomic = BigInt(a.amount);
+      const whole = atomic / 1_000_000n;
+      const fraction = (atomic % 1_000_000n).toString().padStart(6, "0").replace(/0+$/, "");
+      price = fraction ? `${whole}.${fraction} USDC` : `${whole} USDC`;
+    }
+    return {
+      scheme: "exact",
+      network: a.network.slice(0, 80),
+      amountAtomic: a.amount,
+      asset: a.asset.slice(0, 100),
+      payTo: a.payTo.slice(0, 120),
+      maxTimeoutSeconds: typeof a.maxTimeoutSeconds === "number" && Number.isInteger(a.maxTimeoutSeconds) && a.maxTimeoutSeconds > 0 && a.maxTimeoutSeconds <= 3600
+        ? a.maxTimeoutSeconds : null,
+      price
+    };
+  });
+  return {
+    version: typeof challenge.x402Version === "number" ? challenge.x402Version : null,
+    accepts
+  };
+}
+
+function decodePaymentRequiredHeader(header: string): unknown {
+  if (!header || header.length > 48_000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(header)) {
+    throw new Error("X402_INVALID_HEADER");
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(Buffer.from(header, "base64").toString("utf8")) as unknown;
+  } catch {
+    throw new Error("X402_INVALID_CHALLENGE_JSON");
+  }
+  return parsed;
+}
+
+export async function previewPayBoxPoolPayment(input: {
+  limit?: number;
+  minTvlUsd?: number;
+}): Promise<Record<string, unknown>> {
+  const limit = input.limit ?? 3;
+  const minTvlUsd = input.minTvlUsd ?? 10_000;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 50 ||
+      !Number.isFinite(minTvlUsd) || minTvlUsd < 0 || minTvlUsd > 1_000_000_000) {
+    return {
+      connection: "error",
+      executionEnabled: false,
+      detail: "Invalid pool query. limit must be 1–50 and minTvlUsd must be between 0 and 1,000,000,000."
+    };
+  }
+
+  try {
+    const response = await fetch(SOLDEFI_POOLS_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json", "accept": "application/json" },
+      body: JSON.stringify({ limit, minTvlUsd }),
+      signal: AbortSignal.timeout(15_000)
+    });
+    if (response.status !== 402) {
+      return {
+        connection: "unexpected-response",
+        endpoint: SOLDEFI_POOLS_URL,
+        httpStatus: response.status,
+        request: { limit, minTvlUsd },
+        executionEnabled: false,
+        detail: "No payment was sent. The endpoint did not return the expected HTTP 402 challenge, so no paid retry was attempted."
+      };
+    }
+    const header = response.headers.get("payment-required");
+    if (!header) {
+      return {
+        connection: "error",
+        endpoint: SOLDEFI_POOLS_URL,
+        httpStatus: 402,
+        executionEnabled: false,
+        detail: "The endpoint returned HTTP 402 without a Payment-Required header. No payment was sent."
+      };
+    }
+    const challenge = decodePaymentRequiredHeader(header) as Record<string, unknown>;
+    const summary = summarizeX402Challenge(challenge);
+    return {
+      connection: "challenge-received",
+      endpoint: SOLDEFI_POOLS_URL,
+      httpStatus: 402,
+      request: { limit, minTvlUsd },
+      challenge: summary,
+      executionEnabled: false,
+      paymentSent: false,
+      detail: "Live x402 payment challenge parsed. This is a preview only: no credential was used, no X-PAYMENT header was generated, and no payment or blockchain transaction was sent."
+    };
+  } catch {
+    return {
+      connection: "error",
+      endpoint: SOLDEFI_POOLS_URL,
+      executionEnabled: false,
+      paymentSent: false,
+      detail: "Could not safely retrieve or parse the x402 challenge. No payment was sent."
+    };
+  }
+}
