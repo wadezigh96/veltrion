@@ -115,7 +115,7 @@ The legacy mock adapter rejects swap requests. VELTRION now uses the official MC
 ## Local PayBox setup (read-only first)
 
 1. Install dependencies: `npm install`.
-2. Complete PayBox's documented OAuth 2.1 / PKCE flow for the Veltrion client, then provide its access token locally as `PAYBOX_ACCESS_TOKEN`. The PayBox CLI's separate OAuth login does not prove this variable is available. Do not extract tokens from CLI configuration, print them, or commit them.
+2. The direct MCP adapter currently accepts an access token only through the local `PAYBOX_ACCESS_TOKEN` environment variable; it does not implement the OAuth browser/device-code flow or read the PayBox CLI's stored login. PayBox's CLI login can authenticate CLI commands, but it does not configure this direct MCP adapter. Until an approved token-provisioning flow is implemented, `paybox_mcp_discover` correctly returns `not-configured` when the variable is absent. Do not extract tokens from CLI configuration, print them, or commit them.
 3. Start VELTRION with `npm run dev` or build then use `npm start`.
 4. Call `paybox_mcp_discover` to verify the direct MCP handshake and list available tool names/descriptions. This does not call those tools or connect a wallet.
 
