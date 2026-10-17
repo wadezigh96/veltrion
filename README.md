@@ -12,8 +12,8 @@ VELTRION is a separate project for researching Solana DeFi opportunities, valida
 - [x] Explicit PayBox Solana swap/transfer request tools and same-request status reconciliation; execution is disabled by default and not yet live-verified
 - [x] Read-only LLM agent via Vercel AI Gateway added on the feature branch; local live provider smoke test previously succeeded; provider/model availability can change
 - [x] Initial unit tests and security policy tests written
-- [x] PayBox adapter boundary with mock-only and unconfigured fail-closed modes
-- [x] GitHub Actions build, tests, and production dependency audit passed on the latest verified feature-branch commit `4716fb1`
+- [x] PayBox adapter for read-only discovery plus feature-gated Solana swap/transfer requests and request-status reconciliation
+- [x] GitHub Actions build, tests, and production dependency audit passed on CI run #106 for the DeFi monitoring and PayBox adapter changes
 - [x] Direct PayBox MCP Streamable HTTP discovery tool added (live authentication and `list_tools` remain unverified until the documented OAuth token is supplied locally)
 - [x] Removed the PayBox REST SDK after its transitive high-severity dependency issue; production dependency audit passed on the feature branch
 - [x] x402 V2 exact-USDC receiver for Base mainnet with standalone Node and Vercel serverless adapters; disabled by default and checks facilitator `/supported` before processing payments when enabled
@@ -22,7 +22,7 @@ VELTRION is a separate project for researching Solana DeFi opportunities, valida
 - [ ] Production x402 receive activation (requires the chosen receiving address, service price, Vercel project/domain and environment configuration, and live facilitator/settlement verification)
 - [ ] Solana mainnet execution review (disabled until explicitly approved)
 
-This project has not been deployed and has not sent any transaction.
+A production deployment and live PayBox transaction have not been verified; no transaction has been sent by this implementation.
 
 ## Design principles
 
