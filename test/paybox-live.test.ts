@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { summarizePayBoxCredentials } from "../src/paybox/live.js";
+import { isCredentialListResponse, summarizePayBoxCredentials } from "../src/paybox/live.js";
 
 test("credential sanitizer returns only a bounded metadata allowlist", () => {
   const result = summarizePayBoxCredentials({
@@ -32,4 +32,11 @@ test("credential sanitizer caps the number of displayed records", () => {
     credential: { id: `cred_${i}` }
   }));
   assert.equal(summarizePayBoxCredentials({ credentials }).length, 50);
+});
+
+test("connection response validator rejects malformed data instead of implying authentication", () => {
+  assert.equal(isCredentialListResponse(null), false);
+  assert.equal(isCredentialListResponse({}), false);
+  assert.equal(isCredentialListResponse({ credentials: "unexpected" }), false);
+  assert.equal(isCredentialListResponse({ credentials: [] }), true);
 });
