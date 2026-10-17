@@ -236,6 +236,7 @@ export async function previewPayBoxPoolPayment(input: {
     const response = await fetch(SOLDEFI_POOLS_URL, {
       method: "POST",
       headers: { "content-type": "application/json", "accept": "application/json" },
+      redirect: "error",
       body: JSON.stringify({ limit, minTvlUsd }),
       signal: AbortSignal.timeout(15_000)
     });
