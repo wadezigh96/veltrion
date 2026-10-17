@@ -1,6 +1,6 @@
 # VELTRION
 
-**Solana DeFi intelligence MCP agent with read-only PayBox MCP discovery.**
+**Solana DeFi intelligence MCP agent with read-only analysis and feature-gated PayBox transaction requests.**
 
 VELTRION is a separate project for researching Solana DeFi opportunities, validating transaction intent, and—only after explicit user authorization—requesting supported wallet operations through PayBox.
 
@@ -8,22 +8,27 @@ VELTRION is a separate project for researching Solana DeFi opportunities, valida
 
 - [x] Initial repository and security-design review
 - [x] Read-only-first architecture defined
-- [x] MCP server tools for status, DeFi risk checks, PayBox discovery/wallet metadata, Solana mint inspection, live portfolio valuation, and transaction activity lookup
+- [x] MCP tools for portfolio/activity, native SOL staking monitor, public Solana yield scan, transaction status, token inspection, DeFi risk checks, and PayBox wallet discovery
+- [x] Explicit PayBox Solana swap/transfer request tools and same-request status reconciliation; execution is disabled by default and not yet live-verified
 - [x] Read-only LLM agent via Vercel AI Gateway added on the feature branch; local live provider smoke test previously succeeded; provider/model availability can change
 - [x] Initial unit tests and security policy tests written
-- [x] PayBox adapter boundary with mock-only and unconfigured fail-closed modes
-- [x] GitHub Actions build, tests, and production dependency audit passed on the latest verified feature-branch commit `4716fb1`
+- [x] PayBox adapter for read-only discovery plus feature-gated Solana swap/transfer requests and request-status reconciliation
+- [x] GitHub Actions build, tests, and production dependency audit passed on CI run #106 for the DeFi monitoring and PayBox adapter changes
 - [x] Direct PayBox MCP Streamable HTTP discovery tool added (live authentication and `list_tools` remain unverified until the documented OAuth token is supplied locally)
 - [x] Removed the PayBox REST SDK after its transitive high-severity dependency issue; production dependency audit passed on the feature branch
+- [x] x402 V2 exact-USDC receiver for Base mainnet with standalone Node and Vercel serverless adapters; disabled by default and checks facilitator `/supported` before processing payments when enabled
+- [x] x402 receiver unit tests for config validation, facilitator network support, and disabled HTTP behavior
+- [ ] PayBox x402 send through VELTRION (blocked until a supported OAuth token-provisioning flow is configured; no credentials are extracted from the PayBox CLI config)
+- [ ] Production x402 receive activation (requires the chosen receiving address, service price, Vercel project/domain and environment configuration, and live facilitator/settlement verification)
 - [ ] Solana mainnet execution review (disabled until explicitly approved)
 
-This project has not been deployed and has not sent any transaction.
+A production deployment and live PayBox transaction have not been verified; no transaction has been sent by this implementation.
 
 ## Design principles
 
 1. **PayBox owns wallet authorization.** VELTRION must never request, store, log, or expose seed phrases or raw wallet private keys.
 2. **Read-only by default.** Portfolio, token metadata, quote inspection, risk checks, and transaction-status reads are the initial focus.
-3. **Explicit execution boundary.** A swap or transfer is a separate action from analysis or quoting. Show chain, wallet, input/output assets, amount, slippage, fees, recipient (for transfers), and the relevant risks before requesting execution.
+3. **Explicit execution boundary.** A swap or transfer is a separate action from analysis or quoting. PayBox swap/transfer request tools exist behind `VELTRION_PAYBOX_EXECUTION_ENABLED=true`, require the user's exact confirmation flag, a granted Solana wallet, validated atomic amounts, and PayBox authorization. The AI analyst itself cannot call money-moving tools.
 4. **No silent retries.** If a PayBox request is pending or its result is uncertain, poll the same request ID and reconcile its status. Never create a duplicate money operation to recover from a timeout.
 5. **Mainnet guardrails.** No transaction should be submitted without the user's clear instruction and the applicable PayBox approval. Mainnet execution remains off until the tests and security review pass.
 6. **Fail closed.** Reject malformed amounts, unsupported chains/tokens, invalid recipients, stale quotes, excessive slippage, and incomplete transaction details.
@@ -40,10 +45,12 @@ VELTRION MCP server
    |-- Read-only Solana market / token data
    |-- DeFi opportunity analysis and risk checks
    |-- Input validation and policy gate
-   |-- Quote and transaction-status presentation
+   |-- Public yield scan and native staking monitor
+   |-- Feature-gated swap / transfer request tools
+   |-- Same-request status reconciliation
    |
    v
-PayBox MCP (OAuth access token supplied locally; tool discovery only)
+PayBox MCP (OAuth access token supplied locally; approved tools only)
    |
    v
 User approval / PayBox signing and execution
@@ -56,30 +63,31 @@ VELTRION should not bypass PayBox by handling wallet private keys or broadcastin
 
 ## Implemented MCP tools
 
-- `veltrion_status` — reports current configuration and confirms execution is disabled.
+- `veltrion_status` — reports current configuration and the PayBox execution gate state.
 - `defi_risk_check` — validates a proposed action without signing or broadcasting.
-- `solana_token_inspect` — reads a confirmed Solana mint account and reports token program, decimals, atomic supply, initialization, and authority flags.
+- `solana_token_inspect` — reads a confirmed Solana mint account and reports token program, decimals, atomic supply, initialization, and authority flags.\n- `solana_native_staking_monitor` — reads native Solana stake-program accounts for a public wallet and reports stake account SOL and activation state; does not cover liquid-staking tokens or third-party LP farming.\n- `solana_transaction_status` — checks the current status of a known Solana transaction signature; never submits or retries a transaction.\n- `defi_opportunity_scan` — scans public DefiLlama Solana yield/TVL data, filters by TVL, and flags APY outliers and relevant risk indicators; does not identify wallet deposits or claimable rewards.
 - `solana_wallet_portfolio` — reads SOL balance, SPL/Token-2022 token-account balances, and a bounded recent signature history for a caller-supplied public address. No wallet connection or signing is required.
 - `paybox_mcp_discover` — directly connects to PayBox MCP using local `PAYBOX_ACCESS_TOKEN` and lists tool names/descriptions only.
 - `paybox_list_wallets` — invokes only PayBox's read-only `list_credentials` tool and returns allowlisted wallet metadata.
 
 ### Planned read-only tools
 
-- `defi_opportunity_scan` — summarize supported, sourced opportunities with freshness and risk notes.
-- `transaction_status` — inspect a known signature/request status. Detailed transaction decoding and protocol-specific farming position tracking remain future work.
+- Protocol-specific decoding of LP farming positions and claimable rewards. Current yield scanning is market-wide and native staking monitoring covers only native Solana stake accounts.
 
-### Future guarded actions (not enabled in the initial release)
+### Feature-gated PayBox actions
 
-- `swap_quote` — obtain and display a quote without treating it as authorization to trade.
-- `swap_execute` — request a PayBox swap only after explicit confirmation and policy checks.
-- `transfer_execute` — request a PayBox transfer only after explicit confirmation and recipient validation.
+- `paybox_request_swap` — requests a same-chain Solana swap with exact source/destination token, atomic amount, slippage (maximum 300 bps), granted wallet, and `confirmed: true`.
+- `paybox_request_transfer` — requests a Solana SOL/SPL transfer with a validated recipient, atomic amount, granted wallet, and `confirmed: true`.
+- `paybox_request_status` — reconciles the same request ID; it never re-submits the operation.
+
+The swap/transfer request tools fail closed unless both `VELTRION_PAYBOX_EXECUTION_ENABLED=true` and `PAYBOX_ACCESS_TOKEN` are configured. The request-status tool can reconcile an existing request with `PAYBOX_ACCESS_TOKEN` even if new execution has been disabled. They are separate MCP tools and are **not** exposed to the LLM's tool-calling allowlist. PayBox's own approval/signing flow is still authoritative. No live transaction has been tested.
 
 Tool availability must reflect actual implemented and tested functionality. Do not advertise an unimplemented tool as working.
 
 ## Read-only LLM agent (feature branch)
 
 - `veltrion_llm_status` reports whether `AI_GATEWAY_API_KEY` and `VELTRION_LLM_MODEL` are configured; it does not call the provider.
-- `veltrion_ai_agent` calls the Vercel AI Gateway Chat Completions endpoint and can select only three read-only tools: `solana_wallet_portfolio`, `solana_token_inspect`, and `defi_risk_check`.
+- `veltrion_ai_agent` calls the Vercel AI Gateway Chat Completions endpoint and can select only six read-only tools: `solana_wallet_portfolio`, `solana_token_inspect`, `defi_risk_check`, `defi_opportunity_scan`, `solana_native_staking_monitor`, and `solana_transaction_status`.
 - The agent is bounded to at most three tool calls and two model requests per user message. It cannot call PayBox, pay x402 services, sign, or broadcast transactions.
 - Configure `AI_GATEWAY_API_KEY` and `VELTRION_LLM_MODEL` in the local environment or deployment secret settings. Never commit real values. No default model is assumed.
 - The API provider receives the user question and any tool results needed to answer it. Do not submit confidential information. API usage may incur charges under the provider account.
@@ -110,7 +118,7 @@ Tool availability must reflect actual implemented and tested functionality. Do n
 
 The implementation uses a typed Node.js/TypeScript MCP service with a clear provider adapter boundary and no server-side private-key handling.
 
-The legacy mock adapter rejects swap requests. VELTRION now uses the official MCP client library to perform a direct Streamable HTTP handshake and `list_tools` discovery using a locally supplied `PAYBOX_ACCESS_TOKEN`. The discovery tool only lists sanitized tool names/descriptions; it never invokes provider tools. The PayBox REST SDK was deliberately removed after CI's production dependency audit found a high-severity transitive `ws` vulnerability with no available fix in that dependency chain. Swaps and transfers remain disabled. See [SECURITY.md](./SECURITY.md) and [docs/PAYBOX_DEFI_INTEGRATION.md](./docs/PAYBOX_DEFI_INTEGRATION.md).
+The legacy mock adapter rejects swap requests. VELTRION now uses the official MCP client library to perform a direct Streamable HTTP handshake and `list_tools` discovery using a locally supplied `PAYBOX_ACCESS_TOKEN`. The discovery tool only lists sanitized tool names/descriptions; it never invokes provider tools. The PayBox REST SDK was deliberately removed after CI's production dependency audit found a high-severity transitive `ws` vulnerability with no available fix in that dependency chain. Swap/transfer request tools are implemented but remain disabled by default. They have not been verified against the user's authenticated PayBox session, so do not enable them in production until a local low-value test, request-status reconciliation test, and security review pass. Stake deposits, unstaking, and yield-farming deposits are not implemented. Read-only native staking and public yield scanning are available on the feature branch. See [SECURITY.md](./SECURITY.md) and [docs/PAYBOX_DEFI_INTEGRATION.md](./docs/PAYBOX_DEFI_INTEGRATION.md).
 
 ## Local PayBox setup (read-only first)
 
@@ -118,8 +126,9 @@ The legacy mock adapter rejects swap requests. VELTRION now uses the official MC
 2. The direct MCP adapter currently accepts an access token only through the local `PAYBOX_ACCESS_TOKEN` environment variable; it does not implement the OAuth browser/device-code flow or read the PayBox CLI's stored login. PayBox's CLI login can authenticate CLI commands, but it does not configure this direct MCP adapter. Until an approved token-provisioning flow is implemented, `paybox_mcp_discover` correctly returns `not-configured` when the variable is absent. Do not extract tokens from CLI configuration, print them, or commit them.
 3. Start VELTRION with `npm run dev` or build then use `npm start`.
 4. Call `paybox_mcp_discover` to verify the direct MCP handshake and list available tool names/descriptions. This does not call those tools or connect a wallet.
+5. Keep `VELTRION_PAYBOX_EXECUTION_ENABLED` unset or `false` until you have reviewed the tools and verified a granted wallet. Enabling the flag can allow real Solana swaps/transfers from a granted wallet; never enable it just to test discovery.
 
-Do not paste `PAYBOX_ACCESS_TOKEN` into chat, source files, MCP tool arguments, or GitHub issues. Do not paste credentials into chat or commit them. VELTRION's swap/transfer execution tools are intentionally not enabled yet.
+Do not paste `PAYBOX_ACCESS_TOKEN` into chat, source files, MCP tool arguments, or GitHub issues. Do not commit credentials. Execution is disabled by default; enabling it is a deliberate production security decision.
 
 ## Verify live portfolio data (no mock)
 
@@ -148,3 +157,8 @@ npm run verify:llm:live
 ```
 
 These variables exist only in the current shell session. Do not paste the key into chat, put it in source code, or commit it. If the smoke test succeeds, the MCP server can use the same environment variables when it is launched from that shell. To stop retaining the variables in that session, run `unset AI_GATEWAY_API_KEY VELTRION_LLM_MODEL VELTRION_ALLOW_LIVE_LLM_TEST`.
+
+
+## x402 send and receive
+
+See [docs/X402_SEND_RECEIVE.md](docs/X402_SEND_RECEIVE.md) for the guarded receiver, configuration requirements, and current PayBox send integration limitation. The receiver is disabled by default and currently serves demo content only; this repository has not been deployed and no payment has been sent.

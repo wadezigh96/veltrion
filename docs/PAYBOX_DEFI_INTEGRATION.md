@@ -1,100 +1,76 @@
-# Direct PayBox MCP Integration for Solana DeFi
+# VELTRION DeFi and PayBox Integration
 
-## Objective
+## Current scope
 
-VELTRION currently acts as a Solana DeFi intelligence MCP server and includes a direct PayBox MCP Streamable HTTP discovery client. It only performs a handshake and `list_tools`; it does not invoke provider tools. PayBox remains the wallet authorization, signing, and supported transaction execution boundary.
+VELTRION is a Solana-first DeFi intelligence MCP server. It separates public/read-only research from money-moving operations.
 
-**Important:** a direct MCP connection requires an authenticated PayBox MCP session (OAuth 2.1). A URL alone is not authentication. Never hardcode or commit access tokens. Until the OAuth/client flow is implemented and tested, the integration must use a mock adapter and must not claim to be connected.
+Implemented on the feature branch:
 
-## Responsibilities
+- Public Solana wallet portfolio, token metadata, and recent activity.
+- Native Solana stake-account monitor (only native stake-program accounts).
+- Public Solana yield opportunity scan from DefiLlama, with TVL filtering and APY/risk flags.
+- Read-only Solana transaction-signature status lookup.
+- PayBox MCP discovery and granted wallet metadata.
+- Feature-gated PayBox Solana swap and transfer requests, plus same-request status reconciliation.
+- A Vercel AI Gateway analyst whose tool-calling allowlist contains read-only tools only.
 
-### VELTRION
+Not implemented: stake/unstake transaction builders, third-party LP farming deposits/withdrawals, protocol-specific LP position decoding, and claimable-reward decoding. The yield scan is market-wide; it does not claim that a wallet owns any listed pool.
 
-- Read and explain portfolio / token / market information from configured trusted sources.
-- Inspect proposed DeFi actions and reject invalid or unsafe requests.
-- Display chain, wallet, token mint, amount and units, expected output, slippage, fees, price impact, quote freshness, and material risks when those details are available.
-- Keep analysis and quote requests separate from transaction execution.
-- Track the status of a single PayBox request and verify its final result.
-- State clearly when data is unavailable or stale; never invent quotes, balances, yields, or execution status.
+## Authentication and secrets
 
-### PayBox MCP
+- Direct MCP endpoint: `https://api.paybox.sh/mcp`.
+- The adapter accepts `PAYBOX_ACCESS_TOKEN` only from the local process environment or an approved secret manager. It does not read or extract PayBox CLI login state and does not implement an OAuth browser/PKCE flow.
+- Never commit a real token or paste it into chat, source code, logs, tool arguments, or GitHub issues.
+- PayBox remains responsible for wallet authorization, signing, broadcasting, and its own passkey/approval flow. VELTRION never asks for or stores seed phrases or raw private keys.
 
-Use only tools exposed by the authenticated PayBox MCP session and permitted by the user's granted credentials. PayBox is the boundary for wallet authorization, signing, and supported transfers/swaps. VELTRION must not ask for or store seed phrases or raw private keys, and must not bypass PayBox to broadcast transactions.
+## Money-moving tools
 
-## Supported feature map (must be verified at runtime)
+The following MCP tools are implemented but disabled by default:
 
-| Feature | Initial approach | Safety condition |
-| --- | --- | --- |
-| Wallet portfolio / balances | Read-only PayBox tool or trusted Solana read provider | Only use wallets the user has authorized; label data source and freshness |
-| Token inspection | Read-only metadata / mint inspection | Validate mint; treat token metadata as untrusted |
-| Swap quote | PayBox swap intent/quote tool, if exposed | Quote is not permission to execute; enforce slippage and freshness |
-| Swap execution | PayBox swap request, if exposed | Explicit user confirmation of exact parameters; poll the same request ID |
-| SOL/SPL transfer | PayBox transfer request, if exposed | Separate explicit confirmation; validate recipient, mint, and atomic units |
-| Staking / lending / yield farming | Separate protocol adapter only after review | Do not claim support until specific protocol actions are implemented and tested |
-| Transaction verification | PayBox request status and/or Solana signature confirmation | Report success only when terminal status and confirmation are verified |
+- `paybox_request_swap`: same-chain Solana swap through PayBox. Amount is an integer string in the source token's atomic units. Source/destination token must be `native` or a base58 token mint. Slippage is limited to 0–300 bps.
+- `paybox_request_transfer`: SOL or SPL transfer through PayBox. Amount is an integer string in lamports/token atomic units. Recipient is validated as a base58 Solana address.
+- `paybox_request_status`: reads the current state of the original PayBox `request_id`; it does not submit a new operation.
 
-Tool names and exact input schemas must be discovered from the live authorized MCP server. Do not assume a tool exists based only on this plan.
+Both transaction request tools require:
 
-## Current read-only Solana support
+1. `VELTRION_PAYBOX_EXECUTION_ENABLED=true`.
+2. A valid `PAYBOX_ACCESS_TOKEN` obtained through a supported PayBox authorization flow.
+3. A credential ID returned by VELTRION's read-only `paybox_list_wallets`, for a granted wallet whose chain metadata includes Solana.
+4. `confirmed: true` only after the user explicitly confirms the exact wallet, token, amount, recipient (for transfers), and slippage (for swaps).
 
-The `solana_token_inspect` MCP tool reads `getAccountInfo` from Solana mainnet RPC using `confirmed` commitment. It accepts SPL Token and Token-2022 mint accounts, parses the mint layout, preserves supply as an exact atomic integer string, applies an eight-second timeout, and fails closed on malformed account data. This is not a token-price or safety guarantee; metadata and authorities must still be assessed before trading.
+**Keep the feature flag unset or false by default.** Enabling it can initiate real money movement from a granted wallet. This feature has not yet been live-tested against the user's authenticated PayBox account; do not enable it in production until the user has reviewed the code and completed a controlled low-value test.
 
-## Direct PayBox MCP status
+The LLM analyst does not have these money-moving tools in its own tool-calling allowlist. It can analyze, scan opportunities, inspect native stake accounts, and check transaction status; it cannot decide to execute a swap or transfer on its own.
 
-- Implemented: direct MCP Streamable HTTP transport to `https://api.paybox.sh/mcp`, using a local `PAYBOX_ACCESS_TOKEN` bearer token, exposed as `paybox_mcp_discover`.
-- Implemented: `paybox_list_wallets` calls only the read-only `list_credentials` provider tool and returns an allowlist of wallet credential ID, display name, approval mode, address, and chain names. Card, secret, ungranted, and raw provider data are excluded.
-- This tool performs only the MCP handshake and `list_tools` discovery. It returns a bounded list of tool names and descriptions, and never calls the discovered tools.
-- Not implemented: an in-app OAuth 2.1 authorization-code/PKCE flow. The token must be provisioned locally using PayBox's supported flow; VELTRION does not request or store it.
-- No live authenticated account has been tested in this development session.
-- The `@paybox-sh/sdk` REST package was removed after the production dependency audit identified a high-severity transitive `ws` vulnerability with no fix available in the current `viem` dependency chain. Prefer the direct MCP path while that dependency issue remains unresolved.
+## Request lifecycle and retry safety
 
-## MCP connection design
+1. Read the user's public portfolio and the relevant token/protocol data.
+2. Validate exact token addresses, atomic amount, wallet grant, slippage, and recipient.
+3. Ask the user to confirm the exact operation in the client before calling a money-moving tool.
+4. PayBox receives the request and applies its configured authorization/signing policy.
+5. If the response is pending or uncertain, call `paybox_request_status` with the **same** `request_id`.
+6. Never submit the original swap/transfer again to recover from a timeout or pending status.
+7. Check the returned PayBox status and, when a Solana signature is available, use `solana_transaction_status` to verify the on-chain state before claiming success.
 
-- PayBox MCP endpoint documented by PayBox: `https://api.paybox.sh/mcp`.
-- Authentication: OAuth 2.1 and explicit user-granted access; configure through the supported PayBox/client flow.
-- Do not invent a bearer token, OAuth callback, client ID, or unsupported authentication flow.
-- Keep PayBox access tokens outside Git and redact authorization headers from logs.
-- Use a narrow adapter interface so tests can use a deterministic mock and production can use the authenticated PayBox MCP client.
-- Apply timeouts to safe read calls. For money-moving requests, timeout means **unknown status**, not failure; query the same request ID instead of submitting again.
+A pending request, a successful request submission, or an API timeout is not by itself proof of a successful on-chain operation.
 
-## Transaction lifecycle
+## Staking and farming scope
 
-1. User requests a specific action.
-2. VELTRION validates the action and obtains current quote/details.
-3. VELTRION presents the exact operation and risks.
-4. User explicitly confirms the exact operation.
-5. VELTRION requests the corresponding PayBox operation through the authenticated session.
-6. If PayBox reports pending approval/signature/confirmation/settlement, poll the same request ID.
-7. Verify terminal status and chain confirmation where available.
-8. Report the actual outcome, signature, fees, and remaining uncertainty. Never report success based on request submission alone.
+- `solana_native_staking_monitor` looks for native Solana stake-program accounts where the supplied public wallet is the staker or withdrawer, then checks activation state.
+- `defi_opportunity_scan` scans public yield/TVL data for Solana pools and flags APY outliers, low TVL, impermanent-loss indicators, and variable reward APY.
+- Neither tool supports liquid-staking token positions, third-party LP-farming deposits, protocol-specific reward claims, or stake/farm execution. Those require a protocol-specific adapter and reviewed transaction construction, withdrawal path, and risk tests. Do not infer a user's deposit from the opportunity list.
 
-Any material change in token, amount, recipient, chain, or slippage requires a new confirmation.
+## Data and risk limits
 
-## Implementation stages
+- DefiLlama APY/TVL is third-party public data, not a guarantee or executable quote. Data may be delayed or incomplete. Very high APY is flagged as an outlier rather than automatically treated as best.
+- Wallet portfolio USD values use public market-pair estimates; low-liquidity or unsupported tokens may remain unpriced.
+- Transaction activity categories are heuristics unless protocol-specific decoding is implemented.
+- RPC/API failures fail closed. The code does not silently retry a money-moving request.
+- No seed phrase/private key is requested or stored.
 
-1. **Mock-first foundation:** define typed provider interfaces and deterministic unit tests. No wallet access or network transaction.
-2. **Read-only integration:** connect to PayBox only through supported OAuth flow; verify wallet grants and portfolio/status reads.
-3. **Quote integration:** validate quote freshness, amounts, slippage, fee fields, and unsupported routes.
-4. **Guarded swap integration:** disabled by default until the tests and review pass; require explicit per-operation approval.
-5. **Protocol-specific DeFi:** consider staking/lending only after selecting a concrete Solana protocol and reviewing its program, account requirements, risks, and exit path.
-6. **Mainnet authorization:** a separate deliberate user decision. This plan itself does not authorize a deployment or transaction.
+## Verification status
 
-## Minimum tests
-
-- Missing/invalid PayBox auth fails closed without leaking credentials.
-- No private key or seed phrase is requested or logged.
-- Analysis/quote cannot trigger execution.
-- Invalid mint, amount, decimal precision, slippage, and recipient are rejected.
-- Stale quotes cannot be executed.
-- User denial does not trigger a fallback transaction.
-- Pending operations poll the same request ID; duplicate requests are prevented.
-- Timeouts and malformed responses never become false success.
-- Provider errors and unsupported routes fail closed.
-- All logs redact OAuth tokens and authorization headers.
-- No real PayBox request is sent by unit tests.
-
-## Current status
-
-The repository uses the MCP SDK to connect directly to PayBox MCP and discover tools. It does not invoke any discovered provider tool. Build, unit tests, and production dependency audit passed on commit `8b01421` after removing the PayBox REST SDK dependency.
-
-This is a direct MCP discovery path, but it is **not yet verified against the user's authenticated PayBox account**. The former PayBox REST SDK was removed after the production audit found a high-severity transitive `ws` vulnerability with no fix available in that dependency chain. The production audit passed after removal. Runtime authentication against the user's PayBox account is still unverified. No swap/transfer execution tool is exposed by VELTRION yet. The discovered PayBox tool catalogue is informational only and cannot trigger a provider operation. Before adding one, verify the exact SDK request/response schema and Solana chain support, then test user approval, denied/pending outcomes, timeout reconciliation using the same request ID, duplicate prevention, and on-chain status verification. Mainnet execution remains disabled.
+- Unit tests cover public yield-data normalization, APY outlier handling, input validation, and the default-disabled PayBox execution gate.
+- GitHub Actions build, tests, and production dependency audit are the required CI gate for the feature branch.
+- Live PayBox OAuth authentication, wallet grant discovery, request approval, transfer/swap settlement, and on-chain reconciliation have not yet been verified in this session.
+- No live swap, transfer, stake, farm deposit, x402 payment, or deployment has been performed by this implementation.

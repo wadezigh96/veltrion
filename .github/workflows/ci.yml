@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main, feat/solana-portfolio-activity]
+    branches: [main, feat/solana-portfolio-activity, feat/llm-readonly-agent, feat/x402-send-receive]
 
 permissions:
   contents: read
