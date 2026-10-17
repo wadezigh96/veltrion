@@ -10,6 +10,7 @@ import { getVeltrionLlmConfiguration, runVeltrionAgent } from "./llm/agent.js";
 import { scanDefiOpportunities } from "./defi/opportunities.js";
 import { monitorNativeSolanaStake } from "./solana/staking.js";
 import { getSolanaTransactionStatus } from "./solana/transaction-status.js";
+import { getPayBoxExecutionStatus, getPayBoxRequestStatus, requestPayBoxSolanaSwap, requestPayBoxSolanaTransfer } from "./paybox/execution.js";
 
 const server = new McpServer({
   name: "veltrion",
@@ -29,10 +30,10 @@ server.registerTool(
       text: JSON.stringify({
         name: "VELTRION",
         networkScope: "Solana",
-        paybox: await getPayBoxCliStatus(),
+        paybox: await getPayBoxCliStatus(),\n        payboxExecution: getPayBoxExecutionStatus(),
         liveWalletAccess: false,
         executionEnabled: false,
-        availableFeatures: ["status", "solana_wallet_portfolio", "paybox_x402_discover", "paybox_x402_preview_pools", "paybox_mcp_discover", "paybox_list_wallets", "solana_token_inspect", "defi_risk_check", "defi_opportunity_scan", "solana_native_staking_monitor", "solana_transaction_status"],
+        availableFeatures: ["status", "solana_wallet_portfolio", "paybox_x402_discover", "paybox_x402_preview_pools", "paybox_mcp_discover", "paybox_list_wallets", "solana_token_inspect", "defi_risk_check", "defi_opportunity_scan", "solana_native_staking_monitor", "solana_transaction_status", "paybox_request_swap", "paybox_request_transfer", "paybox_request_status"],
         note: "Status and service discovery are read-only. Portfolio lookup reads only the public address supplied by the caller, with live Solana RPC and public DexScreener price data. No transaction has been sent."
       }, null, 2)
     }]
@@ -302,6 +303,75 @@ server.registerTool(
     } catch (error) {
       const code = error instanceof Error && /^[A-Z0-9_]+$/.test(error.message) ? error.message : "SOLANA_TRANSACTION_STATUS_FAILED";
       return { content: [{ type: "text", text: JSON.stringify({ signature, error: code, executionEnabled: false, note: "Status lookup failed; do not infer success or submit a duplicate transaction." }, null, 2) }] };
+    }
+  }
+);
+
+
+server.registerTool(
+  "paybox_request_swap",
+  {
+    title: "Request a Solana swap through PayBox",
+    description: "REAL-FUNDS OPERATION. Requests a swap through the authenticated PayBox MCP session. Only call when the user explicitly asks for this exact swap and confirms the token mints, atomic amount, slippage, and wallet. Disabled unless VELTRION_PAYBOX_EXECUTION_ENABLED=true and PAYBOX_ACCESS_TOKEN is configured. PayBox's own wallet approval/signing flow remains authoritative. Never retry the same request; use paybox_request_status.",
+    inputSchema: {
+      credentialId: z.string().trim().min(1).max(200).describe("Granted PayBox wallet credential ID from paybox_list_wallets."),
+      srcToken: z.string().min(1).max(44).describe('Source SPL mint address or "native" for SOL.'),
+      dstToken: z.string().min(1).max(44).describe('Destination SPL mint address or "native" for SOL.'),
+      amount: z.string().regex(/^[1-9]\\d{0,39}$/).describe("Exact source-token atomic units; not a decimal UI amount."),
+      slippageBps: z.number().int().min(0).max(300).describe("Slippage tolerance in basis points; max 300 bps (3%)."),
+      confirmed: z.literal(true).describe("Must be true only after the user explicitly confirms the exact swap details.")
+    }
+  },
+  async (input) => {
+    try {
+      return { content: [{ type: "text", text: JSON.stringify(await requestPayBoxSolanaSwap(input), null, 2)] };
+    } catch (error) {
+      const code = error instanceof Error && /^[A-Z0-9_]+$/.test(error.message) ? error.message : "PAYBOX_SWAP_REQUEST_FAILED";
+      return { content: [{ type: "text", text: JSON.stringify({ error: code, executionEnabled: false, note: "No successful transaction was confirmed. Do not repeat the operation until its request status is reconciled." }, null, 2) }] };
+    }
+  }
+);
+
+
+server.registerTool(
+  "paybox_request_transfer",
+  {
+    title: "Request a Solana transfer through PayBox",
+    description: "REAL-FUNDS OPERATION. Sends SOL or an SPL token through the authenticated PayBox MCP session. Only call when the user explicitly asks for this exact transfer and confirms recipient, token, atomic amount, and wallet. Disabled unless VELTRION_PAYBOX_EXECUTION_ENABLED=true and PAYBOX_ACCESS_TOKEN is configured. PayBox's own wallet approval/signing flow remains authoritative. Never retry the same request; use paybox_request_status.",
+    inputSchema: {
+      credentialId: z.string().trim().min(1).max(200).describe("Granted PayBox wallet credential ID from paybox_list_wallets."),
+      to: z.string().min(32).max(44).regex(/^[1-9A-HJ-NP-Za-km-z]+$/).describe("Recipient Solana address."),
+      token: z.string().min(1).max(44).optional().describe('SPL token mint; omit or use "native" for SOL.'),
+      amount: z.string().regex(/^[1-9]\\d{0,39}$/).describe("Exact token atomic units (lamports for SOL)."),
+      confirmed: z.literal(true).describe("Must be true only after the user explicitly confirms the exact transfer details.")
+    }
+  },
+  async (input) => {
+    try {
+      return { content: [{ type: "text", text: JSON.stringify(await requestPayBoxSolanaTransfer(input), null, 2)] };
+    } catch (error) {
+      const code = error instanceof Error && /^[A-Z0-9_]+$/.test(error.message) ? error.message : "PAYBOX_TRANSFER_REQUEST_FAILED";
+      return { content: [{ type: "text", text: JSON.stringify({ error: code, executionEnabled: false, note: "No successful transaction was confirmed. Do not repeat the operation until its request status is reconciled." }, null, 2) }] };
+    }
+  }
+);
+
+
+server.registerTool(
+  "paybox_request_status",
+  {
+    title: "Reconcile an existing PayBox request",
+    description: "Read the current status of a known PayBox request ID. Use this for pending approval/signature/confirmation/settlement. Never call the original swap or transfer again just to poll.",
+    inputSchema: {
+      requestId: z.string().trim().min(1).max(200).describe("The request_id returned by the original PayBox operation.")
+    }
+  },
+  async ({ requestId }) => {
+    try {
+      return { content: [{ type: "text", text: JSON.stringify(await getPayBoxRequestStatus(requestId), null, 2) }] };
+    } catch (error) {
+      const code = error instanceof Error && /^[A-Z0-9_]+$/.test(error.message) ? error.message : "PAYBOX_REQUEST_STATUS_FAILED";
+      return { content: [{ type: "text", text: JSON.stringify({ error: code, note: "Request status is unknown. Do not submit a duplicate operation." }, null, 2) }] };
     }
   }
 );
