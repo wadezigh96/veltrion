@@ -9,7 +9,8 @@ export type PayBoxCredentialSummary = {
 export type PayBoxReadOnlySnapshot = {
   provider: "PayBox";
   connection: "authenticated" | "not-configured" | "error";
-  endpoint: "https://api.paybox.sh/mcp";
+  transport: "official-sdk-rest";
+  endpoint: "https://api.paybox.sh";
   grantedCredentialCount: number;
   ungrantedCredentialCount: number;
   credentials: PayBoxCredentialSummary[];
@@ -48,39 +49,56 @@ export function summarizePayBoxCredentials(value: unknown): PayBoxCredentialSumm
 }
 
 /**
- * Uses the official PayBox SDK's existing local OAuth/API configuration.
- * It only lists credential metadata; it does not request a signature or transaction.
+ * Uses the official PayBox SDK's configured REST client for a read-only
+ * credential listing. This is SDK/API integration, not a direct MCP session.
+ * It never requests signatures or transactions.
  */
 export async function loadPayBoxReadOnlySnapshot(): Promise<PayBoxReadOnlySnapshot> {
   try {
     const client = PayboxClient.fromConfig();
     const raw: unknown = await client.listCredentials();
-    const shape = raw && typeof raw === "object" ? raw as CredentialListShape : {};
-    const credentials = summarizePayBoxCredentials(raw);
+    if (!raw || typeof raw !== "object" || !Array.isArray((raw as CredentialListShape).credentials)) {
+      return {
+        provider: "PayBox",
+        connection: "error",
+        transport: "official-sdk-rest",
+        endpoint: "https://api.paybox.sh",
+        grantedCredentialCount: 0,
+        ungrantedCredentialCount: 0,
+        credentials: [],
+        walletAccess: false,
+        executionEnabled: false,
+        detail: "PayBox returned an unexpected credential-list response. Connection is not considered verified."
+      };
+    }
 
+    const shape = raw as CredentialListShape;
+    const credentials = summarizePayBoxCredentials(raw);
     return {
       provider: "PayBox",
       connection: "authenticated",
-      endpoint: "https://api.paybox.sh/mcp",
+      transport: "official-sdk-rest",
+      endpoint: "https://api.paybox.sh",
       grantedCredentialCount: credentials.length,
       ungrantedCredentialCount: Array.isArray(shape.ungranted) ? shape.ungranted.length : 0,
       credentials,
       walletAccess: false,
       executionEnabled: false,
-      detail: "PayBox SDK responded to a read-only credential listing. No transaction was requested."
+      detail: "The official PayBox SDK returned a valid read-only credential listing. No transaction was requested."
     };
   } catch {
     // Do not return exception text: provider errors can contain sensitive request details.
     return {
       provider: "PayBox",
-      connection: "not-configured",
-      endpoint: "https://api.paybox.sh/mcp",
+      connection: "error",
+      transport: "official-sdk-rest",
+      endpoint: "https://api.paybox.sh",
       grantedCredentialCount: 0,
       ungrantedCredentialCount: 0,
       credentials: [],
       walletAccess: false,
       executionEnabled: false,
-      detail: "PayBox is not authenticated or the read-only check failed. Run the official PayBox login flow locally, then retry."
+      detail: "PayBox authentication or read-only request could not be verified. Use the official login flow locally and retry; no provider error details are exposed."
     };
   }
 }
