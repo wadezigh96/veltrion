@@ -50,8 +50,8 @@ test("x402 challenge summary exposes only bounded payment choice fields", () => 
   });
   assert.equal(summary.version, 2);
   assert.equal(summary.accepts.length, 2);
-  assert.equal(summary.accepts[0].price, "0.02 USDC");
-  assert.equal(summary.accepts[1].price, "0.02 USDC");
+  assert.equal(summary.accepts[0]!.price, "0.02 USDC");
+  assert.equal(summary.accepts[1]!.price, "0.02 USDC");
   assert.equal(JSON.stringify(summary).includes("must-not-be-returned"), false);
 });
 
