@@ -136,7 +136,7 @@ export async function requestPayBoxSolanaSwap(input: {
 export async function requestPayBoxSolanaTransfer(input: {
   credentialId: string;
   to: string;
-  token?: string;
+  token?: string | undefined;
   amount: string;
   confirmed: boolean;
 }) {
