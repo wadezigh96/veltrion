@@ -4,7 +4,8 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 const PAYBOX_PACKAGE = "@paybox-sh/sdk@2.2.0";
 const TIMEOUT_MS = 20_000;
-const MAX_OUTPUT = 24_000;
+// Bazaar discovery can return many service/payment variants; keep a bounded but practical JSON ceiling.
+const MAX_OUTPUT = 256_000;
 
 async function runPayBox(args: string[]): Promise<{ stdout: string; stderr: string }> {
   const result = await execFileAsync(
