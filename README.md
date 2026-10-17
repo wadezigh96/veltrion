@@ -60,10 +60,9 @@ VELTRION should not bypass PayBox by handling wallet private keys or broadcastin
 - `solana_token_inspect` — reads a confirmed Solana mint account and reports token program, decimals, atomic supply, initialization, and authority flags.\n- `solana_wallet_portfolio` — reads SOL balance, SPL/Token-2022 token-account balances, and a bounded recent signature history for a caller-supplied public address. No wallet connection or signing is required.
 - `paybox_mcp_discover` — directly connects to PayBox MCP using local `PAYBOX_ACCESS_TOKEN` and lists tool names/descriptions only.
 - `paybox_list_wallets` — invokes only PayBox's read-only `list_credentials` tool and returns allowlisted wallet metadata.
-
+ 
 ### Planned read-only tools
 
-- `solana_wallet_portfolio` — show balances through an explicitly authorized read source.
 - `defi_opportunity_scan` — summarize supported, sourced opportunities with freshness and risk notes.
 - `transaction_status` — inspect a known signature/request status. (Detailed transaction decoding and protocol-specific farming position tracking remain future work.)
 
@@ -98,7 +97,7 @@ Tool availability must reflect actual implemented and tested functionality. Do n
 
 ## Development
 
-The implementation stack has not yet been locked. Prefer a small, typed Node.js/TypeScript MCP service with a clear provider adapter boundary, deterministic tests, and no server-side private-key handling.
+The implementation uses a typed Node.js/TypeScript MCP service with a clear provider adapter boundary and no server-side private-key handling.
 
 The legacy mock adapter rejects swap requests. VELTRION now uses the official MCP client library to perform a direct Streamable HTTP handshake and `list_tools` discovery using a locally supplied `PAYBOX_ACCESS_TOKEN`. The discovery tool only lists sanitized tool names/descriptions; it never invokes provider tools. The PayBox REST SDK was deliberately removed after CI's production dependency audit found a high-severity transitive `ws` vulnerability with no available fix in that dependency chain. Swaps and transfers remain disabled. See [SECURITY.md](./SECURITY.md) and [docs/PAYBOX_DEFI_INTEGRATION.md](./docs/PAYBOX_DEFI_INTEGRATION.md).
 
