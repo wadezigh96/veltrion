@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseSolanaMintAccount } from "../src/solana/rpc.js";
+import { formatLamportsAsSol, parseSolanaMintAccount } from "../src/solana/rpc.js";
 
 const mint = "So11111111111111111111111111111111111111112";
 const tokenProgram = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
@@ -29,6 +29,8 @@ test("parses SPL mint metadata without converting supply to floating point", () 
   assert.equal(result.initialized, true);
   assert.equal(result.mintAuthorityEnabled, true);
   assert.equal(result.freezeAuthorityEnabled, false);
+  assert.equal(result.accountLamports, 1_461_600);
+  assert.equal(result.accountLamportsSol, "0.0014616");
   assert.equal(result.executionEnabled, false);
 });
 
@@ -46,4 +48,22 @@ test("rejects malformed mint addresses, unknown owners, and short account data",
 
 test("rejects invalid initialization byte", () => {
   assert.throws(() => parseSolanaMintAccount(mint, makeAccount({ initialized: 2 })), /INVALID_MINT_LAYOUT/);
+});
+
+
+test("converts lamports to exact SOL strings without floating-point rounding", () => {
+  assert.equal(formatLamportsAsSol(0), "0");
+  assert.equal(formatLamportsAsSol(1), "0.000000001");
+  assert.equal(formatLamportsAsSol(1_461_600), "0.0014616");
+  assert.equal(formatLamportsAsSol(1_853_342_359_773), "1853.342359773");
+  assert.equal(formatLamportsAsSol(1_000_000_000), "1");
+  assert.throws(() => formatLamportsAsSol(-1), /INVALID_ACCOUNT_LAMPORTS/);
+  assert.throws(() => formatLamportsAsSol(Number.MAX_SAFE_INTEGER + 1), /INVALID_ACCOUNT_LAMPORTS/);
+});
+
+test("preserves a zero mint supply as an observation without inventing circulation", () => {
+  const result = parseSolanaMintAccount(mint, makeAccount({ supply: 0n }));
+  assert.equal(result.supplyAtomic, "0");
+  assert.equal(result.decimals, 9);
+  assert.equal(result.executionEnabled, false);
 });
