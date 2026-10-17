@@ -11,8 +11,9 @@ VELTRION is a separate project for researching Solana DeFi opportunities, valida
 - [x] Initial MCP server scaffold (`veltrion_status`, `defi_risk_check`)
 - [x] Initial unit tests and security policy tests written
 - [x] PayBox adapter boundary with mock-only and unconfigured fail-closed modes
-- [x] GitHub Actions build and tests passed on commit `d910880` (direct PayBox MCP discovery, sanitized output, and amount edge-case tests included)
+- [x] GitHub Actions build, tests, and production dependency audit passed on commit `8b01421`
 - [x] Direct PayBox MCP Streamable HTTP discovery tool added (authentication still requires local setup and runtime verification)
+- [x] Removed the PayBox REST SDK after its transitive high-severity dependency issue; production audit passed on `8b01421`
 - [ ] Solana mainnet execution review (disabled until explicitly approved)
 
 This project has not been deployed and has not sent any transaction.
