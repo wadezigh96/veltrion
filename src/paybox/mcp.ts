@@ -162,9 +162,11 @@ export function summarizePayBoxWallets(value: unknown): PayBoxWalletSummary[] {
   if (!Array.isArray(rows)) return [];
 
   return rows
-    .filter((row): row is RawCredential => Boolean(row && typeof row === "object") &&
-      typeof (row as RawCredential).kind === "string" &&
-      (row as RawCredential).kind?.toLowerCase() === "wallet")
+    .filter((row): row is RawCredential => {
+      if (!row || typeof row !== "object") return false;
+      const kind = (row as RawCredential).kind;
+      return typeof kind === "string" && kind.toLowerCase() === "wallet";
+    })
     .slice(0, 50)
     .map((row, index) => {
       const address = row.metadata?.address ?? row.metadata?.wallet_address ?? row.address;
