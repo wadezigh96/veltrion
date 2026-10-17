@@ -94,4 +94,4 @@ Tool availability must reflect actual implemented and tested functionality. Do n
 
 The implementation stack has not yet been locked. Prefer a small, typed Node.js/TypeScript MCP service with a clear provider adapter boundary, deterministic tests, and no server-side private-key handling.
 
-See [SECURITY.md](./SECURITY.md) for the initial threat model and operating rules.
+See [SECURITY.md](./SECURITY.md) for the initial threat model and operating rules, and [docs/PAYBOX_DEFI_INTEGRATION.md](./docs/PAYBOX_DEFI_INTEGRATION.md) for the direct PayBox MCP integration plan.
