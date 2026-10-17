@@ -8,6 +8,8 @@ import { inspectSolanaMint } from "./solana/rpc.js";
 import { getSolanaWalletPortfolio } from "./solana/portfolio.js";
 import { getVeltrionLlmConfiguration, runVeltrionAgent } from "./llm/agent.js";
 import { scanDefiOpportunities } from "./defi/opportunities.js";
+import { monitorNativeSolanaStake } from "./solana/staking.js";
+import { getSolanaTransactionStatus } from "./solana/transaction-status.js";
 
 const server = new McpServer({
   name: "veltrion",
@@ -30,7 +32,7 @@ server.registerTool(
         paybox: await getPayBoxCliStatus(),
         liveWalletAccess: false,
         executionEnabled: false,
-        availableFeatures: ["status", "solana_wallet_portfolio", "paybox_x402_discover", "paybox_x402_preview_pools", "paybox_mcp_discover", "paybox_list_wallets", "solana_token_inspect", "defi_risk_check", "defi_opportunity_scan"],
+        availableFeatures: ["status", "solana_wallet_portfolio", "paybox_x402_discover", "paybox_x402_preview_pools", "paybox_mcp_discover", "paybox_list_wallets", "solana_token_inspect", "defi_risk_check", "defi_opportunity_scan", "solana_native_staking_monitor", "solana_transaction_status"],
         note: "Status and service discovery are read-only. Portfolio lookup reads only the public address supplied by the caller, with live Solana RPC and public DexScreener price data. No transaction has been sent."
       }, null, 2)
     }]
@@ -260,6 +262,46 @@ server.registerTool(
         executionEnabled: false,
         note: "Yield scan failed closed. No wallet or transaction was accessed."
       }, null, 2) }] };
+    }
+  }
+);
+
+
+server.registerTool(
+  "solana_native_staking_monitor",
+  {
+    title: "Monitor native Solana staking positions (read-only)",
+    description: "Reads native Solana stake-program accounts where the public wallet is staker or withdrawer and checks activation status. Does not include liquid-staking tokens or third-party LP farms and never stakes, unstake, signs, or sends.",
+    inputSchema: {
+      address: z.string().min(32).max(44).regex(/^[1-9A-HJ-NP-Za-km-z]+$/).describe("Public Solana wallet address only. Never provide a seed phrase or private key.")
+    }
+  },
+  async ({ address }) => {
+    try {
+      return { content: [{ type: "text", text: JSON.stringify(await monitorNativeSolanaStake(address), null, 2) }] };
+    } catch (error) {
+      const code = error instanceof Error && /^[A-Z0-9_]+$/.test(error.message) ? error.message : "SOLANA_STAKING_MONITOR_FAILED";
+      return { content: [{ type: "text", text: JSON.stringify({ address, error: code, executionEnabled: false, note: "Staking monitor failed closed; no transaction was sent." }, null, 2) }] };
+    }
+  }
+);
+
+
+server.registerTool(
+  "solana_transaction_status",
+  {
+    title: "Check Solana transaction status (read-only)",
+    description: "Checks the current status of a known Solana mainnet transaction signature using RPC history lookup. It does not submit or retry transactions.",
+    inputSchema: {
+      signature: z.string().min(80).max(90).regex(/^[1-9A-HJ-NP-Za-km-z]+$/).describe("Public Solana transaction signature, not a private key.")
+    }
+  },
+  async ({ signature }) => {
+    try {
+      return { content: [{ type: "text", text: JSON.stringify(await getSolanaTransactionStatus(signature), null, 2) }] };
+    } catch (error) {
+      const code = error instanceof Error && /^[A-Z0-9_]+$/.test(error.message) ? error.message : "SOLANA_TRANSACTION_STATUS_FAILED";
+      return { content: [{ type: "text", text: JSON.stringify({ signature, error: code, executionEnabled: false, note: "Status lookup failed; do not infer success or submit a duplicate transaction." }, null, 2) }] };
     }
   }
 );
