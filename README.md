@@ -15,6 +15,10 @@ VELTRION is a separate project for researching Solana DeFi opportunities, valida
 - [x] GitHub Actions build, tests, and production dependency audit passed on the latest verified feature-branch commit `4716fb1`
 - [x] Direct PayBox MCP Streamable HTTP discovery tool added (live authentication and `list_tools` remain unverified until the documented OAuth token is supplied locally)
 - [x] Removed the PayBox REST SDK after its transitive high-severity dependency issue; production dependency audit passed on the feature branch
+- [x] Standalone x402 V2 receiver scaffold for exact USDC on Base mainnet, disabled by default; validates configuration and checks facilitator `/supported` before listening when enabled
+- [x] x402 receiver unit tests for config validation, facilitator network support, and disabled HTTP behavior
+- [ ] PayBox x402 send through VELTRION (blocked until a supported OAuth token-provisioning flow is configured; no credentials are extracted from the PayBox CLI config)
+- [ ] Production x402 receive activation (requires the user's chosen receiving address, service price, deployed HTTPS endpoint, and live facilitator/settlement verification)
 - [ ] Solana mainnet execution review (disabled until explicitly approved)
 
 This project has not been deployed and has not sent any transaction.
@@ -148,3 +152,8 @@ npm run verify:llm:live
 ```
 
 These variables exist only in the current shell session. Do not paste the key into chat, put it in source code, or commit it. If the smoke test succeeds, the MCP server can use the same environment variables when it is launched from that shell. To stop retaining the variables in that session, run `unset AI_GATEWAY_API_KEY VELTRION_LLM_MODEL VELTRION_ALLOW_LIVE_LLM_TEST`.
+
+
+## x402 send and receive
+
+See [docs/X402_SEND_RECEIVE.md](docs/X402_SEND_RECEIVE.md) for the guarded receiver, configuration requirements, and current PayBox send integration limitation. The receiver is disabled by default and currently serves demo content only; this repository has not been deployed and no payment has been sent.
