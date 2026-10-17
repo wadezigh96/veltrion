@@ -324,7 +324,7 @@ server.registerTool(
   },
   async (input) => {
     try {
-      return { content: [{ type: "text", text: JSON.stringify(await requestPayBoxSolanaSwap(input), null, 2)] };
+      return { content: [{ type: "text", text: JSON.stringify(await requestPayBoxSolanaSwap(input), null, 2) }] };
     } catch (error) {
       const code = error instanceof Error && /^[A-Z0-9_]+$/.test(error.message) ? error.message : "PAYBOX_SWAP_REQUEST_FAILED";
       return { content: [{ type: "text", text: JSON.stringify({ error: code, executionEnabled: false, note: "No successful transaction was confirmed. Do not repeat the operation until its request status is reconciled." }, null, 2) }] };
@@ -348,7 +348,7 @@ server.registerTool(
   },
   async (input) => {
     try {
-      return { content: [{ type: "text", text: JSON.stringify(await requestPayBoxSolanaTransfer(input), null, 2)] };
+      return { content: [{ type: "text", text: JSON.stringify(await requestPayBoxSolanaTransfer(input), null, 2) }] };
     } catch (error) {
       const code = error instanceof Error && /^[A-Z0-9_]+$/.test(error.message) ? error.message : "PAYBOX_TRANSFER_REQUEST_FAILED";
       return { content: [{ type: "text", text: JSON.stringify({ error: code, executionEnabled: false, note: "No successful transaction was confirmed. Do not repeat the operation until its request status is reconciled." }, null, 2) }] };
