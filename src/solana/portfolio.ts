@@ -244,7 +244,7 @@ async function enrichSignature(signature: ReturnType<typeof parseSignatures>[num
        programs.includes("spl-token") || programs.includes("spl-token-2022"))) {
       category = "token-transfer";
       classificationConfidence = "medium";
-    } else if (/instruction:\\s*transfer/i.test(haystack) &&
+    } else if (/instruction:\s*transfer/i.test(haystack) &&
       programs.includes("11111111111111111111111111111111")) {
       category = "native-transfer";
       classificationConfidence = "medium";
