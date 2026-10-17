@@ -37,8 +37,9 @@ Tool names and exact input schemas must be discovered from the live authorized M
 
 ## PayBox SDK/API and direct MCP distinction
 
-- Implemented now: `@paybox-sh/sdk` configured client calling `listCredentials()` over PayBox's SDK/API path, exposed as the VELTRION MCP tool `paybox_readonly_status`.
-- Not implemented yet: a direct MCP client session to `https://api.paybox.sh/mcp`, including transport negotiation and OAuth handling inside VELTRION.
+- Implemented now: `@paybox-sh/sdk` configured client calling `listCredentials()` over PayBox's SDK/API path, exposed as `paybox_readonly_status`.
+- Implemented now: direct MCP Streamable HTTP client to `https://api.paybox.sh/mcp`, using a local `PAYBOX_ACCESS_TOKEN` bearer token, exposed as `paybox_mcp_discover`. It performs only `list_tools` discovery and sanitizes the result to tool names/descriptions.
+- Not implemented yet: an in-app OAuth 2.1 authorization-code/PKCE flow. The current direct MCP tool requires a token provisioned locally by the supported PayBox flow; it does not initiate OAuth itself.
 - The read-only tool requires an actual valid credential-list response before reporting `authenticated`; malformed data and errors fail closed, and raw exception text is suppressed.
 - No live authenticated account has been tested in this development session.
 
@@ -91,4 +92,4 @@ Any material change in token, amount, recipient, chain, or slippage requires a n
 
 The repository now depends on the official `@paybox-sh/sdk` and exposes `paybox_readonly_status`. That tool calls `PayboxClient.fromConfig()` and `listCredentials()`, then emits only a bounded metadata allowlist (credential id, display name, and kind). It suppresses raw provider errors and rejects malformed responses. This is SDK/API integration surfaced through VELTRION's MCP server, not a direct PayBox MCP session. Unit tests cover the sanitizer, malformed responses, and output bounds.
 
-This is a real SDK-backed read-only integration path, but it is **not yet verified against the user's authenticated PayBox account**. Build and tests passed on commit `3287d1e`; subsequent changes must also pass GitHub Actions before being considered verified. No swap/transfer execution tool is exposed by VELTRION yet. Before adding one, verify the exact SDK request/response schema and Solana chain support, then test user approval, denied/pending outcomes, timeout reconciliation using the same request ID, duplicate prevention, and on-chain status verification. Mainnet execution remains disabled.
+This is a real SDK-backed read-only integration path, but it is **not yet verified against the user's authenticated PayBox account**. Build and tests passed on commit `3287d1e`; subsequent changes must also pass GitHub Actions before being considered verified. No swap/transfer execution tool is exposed by VELTRION yet. The discovered PayBox tool catalogue is informational only and cannot trigger a provider operation. Before adding one, verify the exact SDK request/response schema and Solana chain support, then test user approval, denied/pending outcomes, timeout reconciliation using the same request ID, duplicate prevention, and on-chain status verification. Mainnet execution remains disabled.
