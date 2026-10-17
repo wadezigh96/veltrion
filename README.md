@@ -11,8 +11,8 @@ VELTRION is a separate project for researching Solana DeFi opportunities, valida
 - [x] Initial MCP server scaffold (`veltrion_status`, `defi_risk_check`)
 - [x] Initial unit tests and security policy tests written
 - [x] PayBox adapter boundary with mock-only and unconfigured fail-closed modes
-- [ ] Run and verify build/tests in GitHub Actions
-- [ ] Live PayBox OAuth/MCP integration (mocked first, then authenticated read-only)
+- [ ] Confirm GitHub Actions build/tests pass on the latest commit
+- [x] Official PayBox SDK dependency and read-only credential-status tool added (runtime authentication still needs user setup/verification)
 - [ ] Solana mainnet execution review (disabled until explicitly approved)
 
 This project has not been deployed and has not sent any transaction.
@@ -61,6 +61,7 @@ VELTRION should not bypass PayBox by handling wallet private keys or broadcastin
 - `solana_token_inspect` — inspect a token mint and available metadata.
 - `defi_opportunity_scan` — summarize supported, sourced opportunities with freshness and risk notes.
 - `defi_risk_check` — validate a proposed action without signing or broadcasting.
+- `paybox_readonly_status` — check the official SDK's local PayBox authentication and return sanitized credential metadata.
 - `transaction_status` — inspect a known signature/request status.
 
 ### Future guarded actions (not enabled in the initial release)
@@ -96,4 +97,14 @@ Tool availability must reflect actual implemented and tested functionality. Do n
 
 The implementation stack has not yet been locked. Prefer a small, typed Node.js/TypeScript MCP service with a clear provider adapter boundary, deterministic tests, and no server-side private-key handling.
 
-The PayBox adapter currently reports `mock-only` and rejects swap requests; it does not authenticate or send network requests. See [SECURITY.md](./SECURITY.md) for the threat model and [docs/PAYBOX_DEFI_INTEGRATION.md](./docs/PAYBOX_DEFI_INTEGRATION.md) for the direct integration plan.
+The legacy mock adapter still rejects swap requests. The official `@paybox-sh/sdk` is now wired to a separate read-only MCP tool that checks the local PayBox SDK configuration and lists sanitized credential metadata. This does not enable swaps or transfers in VELTRION; execution remains disabled pending verified request schemas, approval-flow tests, and explicit authorization. See [SECURITY.md](./SECURITY.md) and [docs/PAYBOX_DEFI_INTEGRATION.md](./docs/PAYBOX_DEFI_INTEGRATION.md).
+
+
+## Local PayBox setup (read-only first)
+
+1. Install dependencies: `npm install`.
+2. On the same machine that runs this stdio MCP server, authenticate through the official PayBox SDK: `npx @paybox-sh/sdk login`.
+3. Start VELTRION with `npm run dev` or build then use `npm start`.
+4. Call `paybox_readonly_status` to verify the SDK can list granted credential metadata. The tool returns a sanitized allowlist and never returns access tokens or signing material.
+
+Do not run `paybox connect` or configure a signing key just to test read-only access. Do not paste credentials into chat or commit them. VELTRION's swap/transfer execution tools are intentionally not enabled yet.
