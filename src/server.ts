@@ -6,6 +6,7 @@ import { getPayBoxCliStatus, discoverPayBoxX402Services, previewPayBoxPoolPaymen
 import { discoverPayBoxMcpTools, listPayBoxWallets } from "./paybox/mcp.js";
 import { inspectSolanaMint } from "./solana/rpc.js";
 import { getSolanaWalletPortfolio } from "./solana/portfolio.js";
+import { getVeltrionLlmConfiguration, runVeltrionAgent } from "./llm/agent.js";
 
 const server = new McpServer({
   name: "veltrion",
@@ -183,6 +184,52 @@ server.registerTool(
         }, null, 2)
       }]
     };
+  }
+);
+
+
+server.registerTool(
+  "veltrion_llm_status",
+  {
+    title: "VELTRION LLM API configuration (read-only)",
+    description: "Reports whether the API model and model name are configured locally. Does not call the provider or expose credentials.",
+    inputSchema: {}
+  },
+  async () => ({
+    content: [{ type: "text", text: JSON.stringify(getVeltrionLlmConfiguration(), null, 2) }]
+  })
+);
+
+server.registerTool(
+  "veltrion_ai_agent",
+  {
+    title: "VELTRION AI DeFi analyst (read-only)",
+    description: "Uses the configured Vercel AI Gateway model with a strictly allowlisted set of read-only Solana portfolio, mint inspection, and DeFi risk-check tools. Never pays, signs, or broadcasts. Requires AI_GATEWAY_API_KEY and VELTRION_LLM_MODEL configured locally.",
+    inputSchema: {
+      message: z.string().trim().min(1).max(4000).describe("Question for the Veltrion DeFi analyst. Never include passwords, API keys, seed phrases, or private keys.")
+    }
+  },
+  async ({ message }) => {
+    try {
+      const result = await runVeltrionAgent(message);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    } catch (error) {
+      const code = error instanceof Error && /^[A-Z0-9_]+$/.test(error.message)
+        ? error.message
+        : "LLM_AGENT_FAILED";
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            error: code,
+            executionEnabled: false,
+            note: code === "LLM_NOT_CONFIGURED"
+              ? "Configure AI_GATEWAY_API_KEY and VELTRION_LLM_MODEL locally; no API request was made."
+              : "The LLM request failed closed. Provider details and credentials are not exposed; no transaction or payment was made."
+          }, null, 2)
+        }]
+      };
+    }
   }
 );
 
