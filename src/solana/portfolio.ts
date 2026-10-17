@@ -36,7 +36,7 @@ async function rpc(method: string, params: unknown[]): Promise<unknown> {
   const raw: unknown = await response.json();
   if (!isRecord(raw)) throw new Error("SOLANA_RPC_INVALID_RESPONSE");
   const envelope = raw as RpcEnvelope;
-  if (envelope.error) throw new Error("SOLANA_RPC_REQUEST_ERROR");
+  if (envelope.error) {\n    const code = isRecord(envelope.error) && typeof envelope.error.code === "number" ? envelope.error.code : null;\n    throw new Error(code === null ? "SOLANA_RPC_REQUEST_ERROR" : `SOLANA_RPC_REQUEST_ERROR_${code}`);\n  }
   if (!("result" in envelope)) throw new Error("SOLANA_RPC_INVALID_RESPONSE");
   return envelope.result;
 }
@@ -100,7 +100,7 @@ function parseSignatures(value: unknown) {
       signature: item.signature,
       slot: item.slot,
       blockTime: item.blockTime ?? null,
-      status: item.err === null ? "confirmed-success" : "failed",
+      status: item.err === null || item.err === undefined ? "confirmed-success" : "failed",
       explorerUrl: `https://explorer.solana.com/tx/${encodeURIComponent(item.signature)}`
     };
   });
@@ -261,7 +261,7 @@ export async function getSolanaWalletPortfolio(address: string, requestedLimit =
     rpc("getBalance", [address, { commitment: "confirmed" }]),
     rpc("getTokenAccountsByOwner", [address, { programId: SPL_TOKEN_PROGRAM }, { encoding: "jsonParsed", commitment: "confirmed" }]),
     rpc("getTokenAccountsByOwner", [address, { programId: TOKEN_2022_PROGRAM }, { encoding: "jsonParsed", commitment: "confirmed" }]),
-    rpc("getSignaturesForAddress", [address, { limit: requestedLimit }, { commitment: "confirmed" }])
+    rpc("getSignaturesForAddress", [address, { limit: requestedLimit, commitment: "confirmed" }])
   ]);
 
   const tokenAccounts = [
