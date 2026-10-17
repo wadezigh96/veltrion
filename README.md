@@ -8,7 +8,7 @@ VELTRION is a separate project for researching Solana DeFi opportunities, valida
 
 - [x] Initial repository and security-design review
 - [x] Read-only-first architecture defined
-- [x] Initial MCP server scaffold (`veltrion_status`, `defi_risk_check`)
+- [x] MCP server tools for status, DeFi risk checks, PayBox discovery/wallet metadata, and Solana mint inspection
 - [x] Initial unit tests and security policy tests written
 - [x] PayBox adapter boundary with mock-only and unconfigured fail-closed modes
 - [x] GitHub Actions build, tests, and production dependency audit passed on commit `8b01421`
@@ -53,17 +53,18 @@ Solana network -> verify final transaction status
 
 VELTRION should not bypass PayBox by handling wallet private keys or broadcasting a transaction behind the user's back. Any future direct protocol integration must be reviewed independently and remain behind the same policy boundary.
 
-## Planned MCP tools
+## Implemented MCP tools
 
-### Initial read-only tools
+- `veltrion_status` — reports current configuration and confirms execution is disabled.
+- `defi_risk_check` — validates a proposed action without signing or broadcasting.
+- `solana_token_inspect` — reads a confirmed Solana mint account and reports token program, decimals, atomic supply, initialization, and authority flags.
+- `paybox_mcp_discover` — directly connects to PayBox MCP using local `PAYBOX_ACCESS_TOKEN` and lists tool names/descriptions only.
+- `paybox_list_wallets` — invokes only PayBox's read-only `list_credentials` tool and returns allowlisted wallet metadata.
 
-- `veltrion_status` — report configuration and whether execution is disabled.
-- `solana_wallet_portfolio` — show balances only through an explicitly authorized read source.
-- `solana_token_inspect` — inspect a token mint and available metadata.
+### Planned read-only tools
+
+- `solana_wallet_portfolio` — show balances through an explicitly authorized read source.
 - `defi_opportunity_scan` — summarize supported, sourced opportunities with freshness and risk notes.
-- `defi_risk_check` — validate a proposed action without signing or broadcasting.
-- `paybox_mcp_discover` — directly connect to PayBox MCP using local `PAYBOX_ACCESS_TOKEN` and list tool names/descriptions only; it never invokes discovered tools.
-- `paybox_list_wallets` — invoke only PayBox's read-only `list_credentials` tool and return allowlisted wallet metadata (no cards or secrets).
 - `transaction_status` — inspect a known signature/request status.
 
 ### Future guarded actions (not enabled in the initial release)
