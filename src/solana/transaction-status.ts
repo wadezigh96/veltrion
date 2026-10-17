@@ -53,7 +53,7 @@ export async function getSolanaTransactionStatus(signature: string): Promise<{
   }
   return {
     signature, network: "solana-mainnet", status: statusLabel, confirmationStatus, slot, confirmations,
-    transactionError, transactionAvailable: status !== null,
+    transactionError, transactionAvailable: status !== null && status !== undefined,
     explorerUrl: `https://explorer.solana.com/tx/${encodeURIComponent(signature)}`,
     fetchedAt: new Date().toISOString(), source: RPC_URL, executionEnabled: false
   };
