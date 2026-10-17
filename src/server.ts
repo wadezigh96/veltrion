@@ -59,7 +59,7 @@ server.registerTool(
     }
   },
   async ({ limit, minTvlUsd }) => ({
-    content: [{ type: "text", text: JSON.stringify(await previewPayBoxPoolPayment({ limit, minTvlUsd }), null, 2) }]
+    content: [{ type: "text", text: JSON.stringify(await previewPayBoxPoolPayment({ ...(limit === undefined ? {} : { limit }), ...(minTvlUsd === undefined ? {} : { minTvlUsd }) }), null, 2) }]
   })
 );
 
