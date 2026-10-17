@@ -57,7 +57,7 @@ test("x402 challenge summary exposes only bounded payment choice fields", () => 
 
 test("x402 challenge summary rejects malformed or unbounded accepts", () => {
   assert.throws(() => summarizeX402Challenge({ x402Version: 2, accepts: [] }), /X402_INVALID_ACCEPTS/);
-  assert.throws(() => summarizeX402Challenge({ accepts: [{ scheme: "exact", network: "solana", amount: "-1", asset: "USDC", payTo: "wallet" }] }), /X402_INVALID_ACCEPT/);
+  assert.throws(() => summarizeX402Challenge({ x402Version: 2, accepts: [{ scheme: "exact", network: "solana", amount: "-1", asset: "USDC", payTo: "wallet" }] }), /X402_INVALID_ACCEPT/);
 });
 
 test("x402 challenge rejects unsupported versions, networks, assets, and recipients", () => {
