@@ -139,7 +139,7 @@ This performs one short request to Vercel AI Gateway. It does not use wallet too
 From the repository directory, enter the key silently so it is not echoed, then run the explicitly opt-in smoke test:
 
 ```bash
-read -r -s -p "AI Gateway API key: " AI_GATEWAY_API_KEY; printf '\\n'
+read -r -s -p "AI Gateway API key: " AI_GATEWAY_API_KEY; echo
 export AI_GATEWAY_API_KEY
 read -r -p "Model ID from the current AI Gateway catalog: " VELTRION_LLM_MODEL
 export VELTRION_LLM_MODEL
