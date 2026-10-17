@@ -6,7 +6,10 @@ test("LLM agent exposes only the explicitly approved read-only tools", () => {
   assert.deepEqual(getVeltrionAllowedToolNames(), [
     "solana_wallet_portfolio",
     "solana_token_inspect",
-    "defi_risk_check"
+    "defi_risk_check",
+    "defi_opportunity_scan",
+    "solana_native_staking_monitor",
+    "solana_transaction_status"
   ]);
   assert.ok(!getVeltrionAllowedToolNames().some((name) => /execute|transfer_execute|swap_execute|paybox|payment/i.test(name)));
 });
