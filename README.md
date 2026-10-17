@@ -8,9 +8,11 @@ VELTRION is a separate project for researching Solana DeFi opportunities, valida
 
 - [x] Initial repository and security-design review
 - [x] Read-only-first architecture defined
-- [ ] MCP server implementation
-- [ ] Unit tests and security tests
-- [ ] PayBox integration tests (mocked first)
+- [x] Initial MCP server scaffold (`veltrion_status`, `defi_risk_check`)
+- [x] Initial unit tests and security policy tests written
+- [x] PayBox adapter boundary with mock-only and unconfigured fail-closed modes
+- [ ] Run and verify build/tests in GitHub Actions
+- [ ] Live PayBox OAuth/MCP integration (mocked first, then authenticated read-only)
 - [ ] Solana mainnet execution review (disabled until explicitly approved)
 
 This project has not been deployed and has not sent any transaction.
@@ -94,4 +96,4 @@ Tool availability must reflect actual implemented and tested functionality. Do n
 
 The implementation stack has not yet been locked. Prefer a small, typed Node.js/TypeScript MCP service with a clear provider adapter boundary, deterministic tests, and no server-side private-key handling.
 
-See [SECURITY.md](./SECURITY.md) for the initial threat model and operating rules, and [docs/PAYBOX_DEFI_INTEGRATION.md](./docs/PAYBOX_DEFI_INTEGRATION.md) for the direct PayBox MCP integration plan.
+The PayBox adapter currently reports `mock-only` and rejects swap requests; it does not authenticate or send network requests. See [SECURITY.md](./SECURITY.md) for the threat model and [docs/PAYBOX_DEFI_INTEGRATION.md](./docs/PAYBOX_DEFI_INTEGRATION.md) for the direct integration plan.
