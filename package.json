@@ -12,7 +12,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/src/server.js",
     "test": "tsx --test test/*.test.ts",
-    "verify:portfolio:live": "tsx scripts/verify-live-portfolio.ts"
+    "verify:portfolio:live": "tsx scripts/verify-live-portfolio.ts",
+    "verify:llm:live": "tsx scripts/verify-live-llm.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
