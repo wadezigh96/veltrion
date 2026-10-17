@@ -72,7 +72,7 @@ function sanitizeOperation(value: unknown, operation: string) {
 
 async function withClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
   const config = readConfig();
-  if (!config.configured) throw new Error(config.enabled ? "PAYBOX_ACCESS_TOKEN_MISSING" : "PAYBOX_EXECUTION_DISABLED");
+  if (!config.token) throw new Error("PAYBOX_ACCESS_TOKEN_MISSING");
   const client = new Client({ name: "veltrion-paybox-execution", version: "0.1.0" });
   const transport = new StreamableHTTPClientTransport(new URL(ENDPOINT), {
     requestInit: {
