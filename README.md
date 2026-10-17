@@ -80,7 +80,7 @@ VELTRION should not bypass PayBox by handling wallet private keys or broadcastin
 - `paybox_request_transfer` — requests a Solana SOL/SPL transfer with a validated recipient, atomic amount, granted wallet, and `confirmed: true`.
 - `paybox_request_status` — reconciles the same request ID; it never re-submits the operation.
 
-These tools fail closed unless both `VELTRION_PAYBOX_EXECUTION_ENABLED=true` and `PAYBOX_ACCESS_TOKEN` are configured. They are separate MCP tools and are **not** exposed to the LLM's tool-calling allowlist. PayBox's own approval/signing flow is still authoritative. No live transaction has been tested.
+The swap/transfer request tools fail closed unless both `VELTRION_PAYBOX_EXECUTION_ENABLED=true` and `PAYBOX_ACCESS_TOKEN` are configured. The request-status tool can reconcile an existing request with `PAYBOX_ACCESS_TOKEN` even if new execution has been disabled. They are separate MCP tools and are **not** exposed to the LLM's tool-calling allowlist. PayBox's own approval/signing flow is still authoritative. No live transaction has been tested.
 
 Tool availability must reflect actual implemented and tested functionality. Do not advertise an unimplemented tool as working.
 
