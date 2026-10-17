@@ -24,9 +24,9 @@ function parseJson(stdout: string): unknown {
 
 const SENSITIVE_KEY = /token|secret|private.?key|authorization|password|credential|payment.?header|x-payment/i;
 
-function redactAndBound(value: unknown, depth = 0): unknown {
+export function sanitizePayBoxPublicResult(value: unknown, depth = 0): unknown {
   if (depth > 6) return "[depth-limited]";
-  if (Array.isArray(value)) return value.slice(0, 40).map(item => redactAndBound(item, depth + 1));
+  if (Array.isArray(value)) return value.slice(0, 40).map(item => sanitizePayBoxPublicResult(item, depth + 1));
   if (value && typeof value === "object") {
     const result: Record<string, unknown> = {};
     for (const [key, item] of Object.entries(value as Record<string, unknown>).slice(0, 60)) {
@@ -92,7 +92,7 @@ export async function discoverPayBoxX402Services(query = ""): Promise<{
       connection: "discovered",
       executionEnabled: false,
       query: normalizedQuery,
-      results: redactAndBound(raw),
+      results: sanitizePayBoxPublicResult(raw),
       detail: "Live PayBox Bazaar discovery completed. This operation is read-only; no x402 endpoint was paid or fetched."
     };
   } catch {
