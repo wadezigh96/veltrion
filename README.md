@@ -1,6 +1,6 @@
 # VELTRION
 
-**Solana DeFi intelligence MCP agent with a guarded PayBox SDK integration path.**
+**Solana DeFi intelligence MCP agent with read-only PayBox MCP discovery.**
 
 VELTRION is a separate project for researching Solana DeFi opportunities, validating transaction intent, and—only after explicit user authorization—requesting supported wallet operations through PayBox.
 
@@ -12,7 +12,7 @@ VELTRION is a separate project for researching Solana DeFi opportunities, valida
 - [x] Initial unit tests and security policy tests written
 - [x] PayBox adapter boundary with mock-only and unconfigured fail-closed modes
 - [x] GitHub Actions build and tests passed on commit `d910880` (direct PayBox MCP discovery, sanitized output, and amount edge-case tests included)
-- [x] Official PayBox SDK dependency and read-only credential-status tool added (runtime authentication still needs user setup/verification)
+- [x] Direct PayBox MCP Streamable HTTP discovery tool added (authentication still requires local setup and runtime verification)
 - [ ] Solana mainnet execution review (disabled until explicitly approved)
 
 This project has not been deployed and has not sent any transaction.
@@ -41,7 +41,7 @@ VELTRION MCP server
    |-- Quote and transaction-status presentation
    |
    v
-PayBox SDK/API (OAuth + user-granted access; direct MCP client still pending)
+PayBox MCP (OAuth access token supplied locally; tool discovery only)
    |
    v
 User approval / PayBox signing and execution
@@ -61,7 +61,6 @@ VELTRION should not bypass PayBox by handling wallet private keys or broadcastin
 - `solana_token_inspect` — inspect a token mint and available metadata.
 - `defi_opportunity_scan` — summarize supported, sourced opportunities with freshness and risk notes.
 - `defi_risk_check` — validate a proposed action without signing or broadcasting.
-- `paybox_readonly_status` — check the official SDK's local PayBox authentication and return sanitized credential metadata.
 - `paybox_mcp_discover` — directly connect to PayBox MCP using local `PAYBOX_ACCESS_TOKEN` and list tool names/descriptions only; it never invokes discovered tools.
 - `transaction_status` — inspect a known signature/request status.
 
@@ -98,14 +97,14 @@ Tool availability must reflect actual implemented and tested functionality. Do n
 
 The implementation stack has not yet been locked. Prefer a small, typed Node.js/TypeScript MCP service with a clear provider adapter boundary, deterministic tests, and no server-side private-key handling.
 
-The legacy mock adapter still rejects swap requests. The official `@paybox-sh/sdk` provides a read-only credential listing over its REST client, and `paybox_mcp_discover` provides a separate direct MCP Streamable HTTP handshake plus `list_tools` discovery using a local `PAYBOX_ACCESS_TOKEN`. The direct MCP tool only discovers tool names/descriptions; it never invokes them. Neither tool enables swaps/transfers. This does not enable swaps or transfers in VELTRION; execution remains disabled pending verified request schemas, approval-flow tests, and explicit authorization. See [SECURITY.md](./SECURITY.md) and [docs/PAYBOX_DEFI_INTEGRATION.md](./docs/PAYBOX_DEFI_INTEGRATION.md).
+The legacy mock adapter rejects swap requests. VELTRION now uses the official MCP client library to perform a direct Streamable HTTP handshake and `list_tools` discovery using a locally supplied `PAYBOX_ACCESS_TOKEN`. The discovery tool only lists sanitized tool names/descriptions; it never invokes provider tools. The PayBox REST SDK was deliberately removed after CI's production dependency audit found a high-severity transitive `ws` vulnerability with no available fix in that dependency chain. Swaps and transfers remain disabled. See [SECURITY.md](./SECURITY.md) and [docs/PAYBOX_DEFI_INTEGRATION.md](./docs/PAYBOX_DEFI_INTEGRATION.md).
 
 
 ## Local PayBox setup (read-only first)
 
 1. Install dependencies: `npm install`.
-2. On the same machine that runs this stdio MCP server, authenticate through the official PayBox SDK: `npx @paybox-sh/sdk login`.
+2. Obtain an access token through PayBox's supported OAuth flow and set `PAYBOX_ACCESS_TOKEN` only in the local process environment or secret manager; never commit it.
 3. Start VELTRION with `npm run dev` or build then use `npm start`.
-4. Call `paybox_readonly_status` to verify the SDK can list granted credential metadata. For the direct MCP handshake, set `PAYBOX_ACCESS_TOKEN` in the local process environment through your supported PayBox OAuth setup, then call `paybox_mcp_discover`. The tool returns a sanitized allowlist and never returns access tokens or signing material.
+4. Call `paybox_mcp_discover` to verify the direct MCP handshake and list available tool names/descriptions. This does not call those tools or connect a wallet.
 
-Do not run `paybox connect` or configure a signing key just to test read-only access. Do not paste `PAYBOX_ACCESS_TOKEN` into chat, source files, MCP tool arguments, or GitHub issues. Do not paste credentials into chat or commit them. VELTRION's swap/transfer execution tools are intentionally not enabled yet.
+Do not paste `PAYBOX_ACCESS_TOKEN` into chat, source files, MCP tool arguments, or GitHub issues. Do not paste credentials into chat or commit them. VELTRION's swap/transfer execution tools are intentionally not enabled yet.
