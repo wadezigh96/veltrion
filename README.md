@@ -15,10 +15,10 @@ VELTRION is a separate project for researching Solana DeFi opportunities, valida
 - [x] GitHub Actions build, tests, and production dependency audit passed on the latest verified feature-branch commit `4716fb1`
 - [x] Direct PayBox MCP Streamable HTTP discovery tool added (live authentication and `list_tools` remain unverified until the documented OAuth token is supplied locally)
 - [x] Removed the PayBox REST SDK after its transitive high-severity dependency issue; production dependency audit passed on the feature branch
-- [x] Standalone x402 V2 receiver scaffold for exact USDC on Base mainnet, disabled by default; validates configuration and checks facilitator `/supported` before listening when enabled
+- [x] x402 V2 exact-USDC receiver for Base mainnet with standalone Node and Vercel serverless adapters; disabled by default and checks facilitator `/supported` before processing payments when enabled
 - [x] x402 receiver unit tests for config validation, facilitator network support, and disabled HTTP behavior
 - [ ] PayBox x402 send through VELTRION (blocked until a supported OAuth token-provisioning flow is configured; no credentials are extracted from the PayBox CLI config)
-- [ ] Production x402 receive activation (requires the user's chosen receiving address, service price, deployed HTTPS endpoint, and live facilitator/settlement verification)
+- [ ] Production x402 receive activation (requires the chosen receiving address, service price, Vercel project/domain and environment configuration, and live facilitator/settlement verification)
 - [ ] Solana mainnet execution review (disabled until explicitly approved)
 
 This project has not been deployed and has not sent any transaction.
