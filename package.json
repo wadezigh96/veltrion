@@ -13,7 +13,8 @@
     "start": "node dist/src/server.js",
     "test": "tsx --test test/*.test.ts",
     "verify:portfolio:live": "tsx scripts/verify-live-portfolio.ts",
-    "verify:llm:live": "tsx scripts/verify-live-llm.ts"
+    "verify:llm:live": "tsx scripts/verify-live-llm.ts",
+    "x402:serve": "tsx src/x402/receive-main.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
