@@ -171,11 +171,7 @@ function collectTokenDeltas(meta: JsonRecord, address: string): Array<{ mint: st
   })).filter(item => item.deltaAtomic !== "0");
 }
 
-const DEX_PROGRAM_HINTS = [
-  "JUP", "Jupiter", "675kPX9MHTjS2zt1qfr1NYHuzeX4gQwVdYx9QxX4",
-  "whirLb", "9W959DqEETiGZocYWCQPaJ6sBmUzgFxE4K7r5Y9f",
-  "Raydium", "Orca", "Meteora"
-];
+const DEX_PROGRAM_HINTS = ["JUP6", "675kPX", "whirLb", "CAMMCzo", "LBUZKh", "Meteora"];
 const STAKE_PROGRAM_HINTS = ["Stake11111111111111111111111111111111111111", "Marinade", "Jito"];
 
 async function enrichSignature(signature: ReturnType<typeof parseSignatures>[number], address: string) {
@@ -197,7 +193,7 @@ async function enrichSignature(signature: ReturnType<typeof parseSignatures>[num
     if (meta.err !== null && meta.err !== undefined) {
       category = "failed";
       classificationConfidence = "high";
-    } else if (tokenDeltas.length >= 2 && DEX_PROGRAM_HINTS.some(hint => haystack.toLowerCase().includes(hint.toLowerCase()))) {
+    } else if (tokenDeltas.length >= 2 && (DEX_PROGRAM_HINTS.some(hint => haystack.toLowerCase().includes(hint.toLowerCase())) || /instruction:\\s*swap/i.test(haystack))) {
       category = "swap";
       classificationConfidence = "medium";
     } else if (STAKE_PROGRAM_HINTS.some(hint => haystack.includes(hint))) {
