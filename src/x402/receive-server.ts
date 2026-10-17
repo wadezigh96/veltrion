@@ -161,8 +161,7 @@ function matchesRequirements(payload: unknown, expected: ReturnType<typeof creat
     typeof accepted.payTo === "string" && accepted.payTo.toLowerCase() === expected.payTo.toLowerCase();
 }
 
-export function createX402ReceiveServer(config: X402ReceiveConfig) {
-  return createServer(async (req, res) => {
+export async function handleX402ReceiveRequest(req: IncomingMessage, res: ServerResponse, config: X402ReceiveConfig): Promise<void> {
     try {
       if (req.method === "GET" && req.url === "/health") {
         return sendJson(res, 200, {
@@ -227,5 +226,8 @@ export function createX402ReceiveServer(config: X402ReceiveConfig) {
       if (!res.headersSent) sendJson(res, 400, { error: "INVALID_REQUEST" });
       else res.destroy();
     }
-  });
+}
+
+export function createX402ReceiveServer(config: X402ReceiveConfig) {
+  return createServer((req, res) => { void handleX402ReceiveRequest(req, res, config); });
 }
