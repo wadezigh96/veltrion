@@ -65,7 +65,9 @@ export async function discoverPayBoxMcpTools(
   );
 
   try {
-    // The SDK transport types have an exactOptionalPropertyTypes mismatch on sessionId;\n    // the runtime transport implements the same MCP Transport contract.\n    await client.connect(transport as unknown as Parameters<typeof client.connect>[0]);
+    // The SDK transport types have an exactOptionalPropertyTypes mismatch on sessionId;
+    // the runtime transport implements the same MCP Transport contract.
+    await client.connect(transport as unknown as Parameters<typeof client.connect>[0]);
     const raw: unknown = await client.listTools();
     const tools = summarizeMcpTools(raw);
     if (!raw || typeof raw !== "object" || !Array.isArray((raw as RawListTools).tools)) {
