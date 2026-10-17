@@ -24,6 +24,17 @@ function parseJson(stdout: string): unknown {
 
 const SENSITIVE_KEY = /token|secret|private.?key|authorization|password|credential|payment.?header|x-payment/i;
 
+function isOfficialPayBoxUrl(value: unknown): boolean {
+  if (typeof value !== "string") return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname === "api.paybox.sh" &&
+      (url.port === "" || url.port === "443") && url.username === "" && url.password === "";
+  } catch {
+    return false;
+  }
+}
+
 export function sanitizePayBoxPublicResult(value: unknown, depth = 0): unknown {
   if (depth > 6) return "[depth-limited]";
   if (Array.isArray(value)) return value.slice(0, 40).map(item => sanitizePayBoxPublicResult(item, depth + 1));
@@ -55,7 +66,7 @@ export async function getPayBoxCliStatus(): Promise<PayBoxCliStatus> {
     const status = raw as Record<string, unknown>;
     const auth = status.auth === "oauth" || status.auth === "api-key" ? status.auth : "unknown";
     const baseUrl = status.baseUrl;
-    if (typeof baseUrl !== "string" || !baseUrl.startsWith("https://api.paybox.sh")) {
+    if (!isOfficialPayBoxUrl(baseUrl)) {
       return { connection: "error", auth, canSign: false, executionEnabled: false, detail: "PayBox CLI endpoint was not the expected official HTTPS endpoint." };
     }
     return {
@@ -134,8 +145,9 @@ export function summarizeX402Challenge(value: unknown): {
     price: string | null;
   }>;
 } {
-  if (!value || typeof value !== "object") throw new Error("X402_INVALID_CHALLENGE");
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("X402_INVALID_CHALLENGE");
   const challenge = value as Record<string, unknown>;
+  if (challenge.x402Version !== 2) throw new Error("X402_UNSUPPORTED_VERSION");
   const rawAccepts = challenge.accepts;
   if (!Array.isArray(rawAccepts) || rawAccepts.length === 0 || rawAccepts.length > 10) {
     throw new Error("X402_INVALID_ACCEPTS");
@@ -149,39 +161,47 @@ export function summarizeX402Challenge(value: unknown): {
     maxTimeoutSeconds: number | null;
     price: string | null;
   } => {
-    if (!item || typeof item !== "object") throw new Error("X402_INVALID_ACCEPT");
+    if (!item || typeof item !== "object" || Array.isArray(item)) throw new Error("X402_INVALID_ACCEPT");
     const a = item as X402Accept;
     if (
       a.scheme !== "exact" ||
       typeof a.network !== "string" ||
       typeof a.amount !== "string" ||
-      !/^\d{1,40}$/.test(a.amount) ||
+      !/^\\d{1,30}$/.test(a.amount) ||
+      BigInt(a.amount) <= 0n ||
       typeof a.asset !== "string" ||
-      typeof a.payTo !== "string"
+      typeof a.payTo !== "string" ||
+      typeof a.maxTimeoutSeconds !== "number" ||
+      !Number.isInteger(a.maxTimeoutSeconds) ||
+      a.maxTimeoutSeconds < 1 ||
+      a.maxTimeoutSeconds > 3600
     ) throw new Error("X402_INVALID_ACCEPT");
-    let price: string | null = null;
-    if ((a.network === SOLANA_MAINNET && a.asset === SOLANA_USDC) ||
-        (a.network === BASE_MAINNET && a.asset.toLowerCase() === BASE_USDC.toLowerCase())) {
-      const atomic = BigInt(a.amount);
-      const whole = atomic / 1_000_000n;
-      const fraction = (atomic % 1_000_000n).toString().padStart(6, "0").replace(/0+$/, "");
-      price = fraction ? `${whole}.${fraction} USDC` : `${whole} USDC`;
+
+    const isSolanaUsdc = a.network === SOLANA_MAINNET && a.asset === SOLANA_USDC;
+    const isBaseUsdc = a.network === BASE_MAINNET && a.asset.toLowerCase() === BASE_USDC.toLowerCase();
+    if (!isSolanaUsdc && !isBaseUsdc) throw new Error("X402_UNSUPPORTED_NETWORK_ASSET");
+    if (isSolanaUsdc && !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a.payTo)) {
+      throw new Error("X402_INVALID_PAY_TO");
     }
+    if (isBaseUsdc && !/^0x[0-9a-fA-F]{40}$/.test(a.payTo)) {
+      throw new Error("X402_INVALID_PAY_TO");
+    }
+
+    const atomic = BigInt(a.amount);
+    const whole = atomic / 1_000_000n;
+    const fraction = (atomic % 1_000_000n).toString().padStart(6, "0").replace(/0+$/, "");
+    const price = fraction ? `${whole}.${fraction} USDC` : `${whole} USDC`;
     return {
       scheme: "exact",
-      network: a.network.slice(0, 80),
+      network: a.network,
       amountAtomic: a.amount,
-      asset: a.asset.slice(0, 100),
-      payTo: a.payTo.slice(0, 120),
-      maxTimeoutSeconds: typeof a.maxTimeoutSeconds === "number" && Number.isInteger(a.maxTimeoutSeconds) && a.maxTimeoutSeconds > 0 && a.maxTimeoutSeconds <= 3600
-        ? a.maxTimeoutSeconds : null,
+      asset: a.asset,
+      payTo: a.payTo,
+      maxTimeoutSeconds: a.maxTimeoutSeconds,
       price
     };
   });
-  return {
-    version: typeof challenge.x402Version === "number" ? challenge.x402Version : null,
-    accepts
-  };
+  return { version: 2, accepts };
 }
 
 function decodePaymentRequiredHeader(header: string): unknown {
