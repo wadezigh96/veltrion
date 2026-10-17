@@ -2,6 +2,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { checkDefiRequest } from "./policy.js";
+import { MockPayBoxAdapter } from "./paybox/adapter.js";
+
+const paybox = new MockPayBoxAdapter();
 
 const server = new McpServer({
   name: "veltrion",
@@ -21,7 +24,7 @@ server.registerTool(
       text: JSON.stringify({
         name: "VELTRION",
         networkScope: "Solana",
-        payboxIntegration: "planned-not-authenticated",
+        paybox: paybox.status(),
         liveWalletAccess: false,
         executionEnabled: false,
         availableFeatures: ["status", "defi_risk_check"],
