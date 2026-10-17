@@ -96,6 +96,18 @@ export function getVeltrionAllowedToolNames(): string[] {
   return TOOL_DEFINITIONS.map((tool) => tool.function.name);
 }
 
+export async function verifyVeltrionLlmConnection(): Promise<{ answer: string; model: string }> {
+  const model = process.env.VELTRION_LLM_MODEL?.trim();
+  if (!process.env.AI_GATEWAY_API_KEY?.trim() || !model) throw new Error("LLM_NOT_CONFIGURED");
+  const response = await gatewayChat([
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "user", content: "For a connectivity check only, reply with exactly: VELTRION_LLM_LIVE_OK. Do not use any tools." }
+  ], false);
+  const answer = typeof response.content === "string" ? response.content.trim() : "";
+  if (!answer) throw new Error("LLM_EMPTY_RESPONSE");
+  return { answer: answer.slice(0, 500), model };
+}
+
 function isRecord(value: unknown): value is JsonObject {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
@@ -151,7 +163,7 @@ async function runReadOnlyTool(name: string, rawArguments: string | undefined): 
   throw new Error("LLM_TOOL_NOT_ALLOWED");
 }
 
-async function gatewayChat(messages: ChatMessage[]): Promise<JsonObject> {
+async function gatewayChat(messages: ChatMessage[], allowTools = true): Promise<JsonObject> {
   const key = process.env.AI_GATEWAY_API_KEY?.trim();
   const model = process.env.VELTRION_LLM_MODEL?.trim();
   if (!key || !model) throw new Error("LLM_NOT_CONFIGURED");
@@ -167,9 +179,11 @@ async function gatewayChat(messages: ChatMessage[]): Promise<JsonObject> {
     body: JSON.stringify({
       model,
       messages,
-      tools: TOOL_DEFINITIONS,
-      tool_choice: "auto",
-      parallel_tool_calls: false,
+      ...(allowTools ? {
+        tools: TOOL_DEFINITIONS,
+        tool_choice: "auto",
+        parallel_tool_calls: false
+      } : { tool_choice: "none" }),
       max_tokens: 1200,
       temperature: 0.2
     })
