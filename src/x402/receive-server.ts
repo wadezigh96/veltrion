@@ -16,10 +16,12 @@ export type X402ReceiveConfig = {
 
 export function loadX402ReceiveConfig(env: NodeJS.ProcessEnv = process.env): X402ReceiveConfig {
   const enabled = env.X402_RECEIVE_ENABLED === "true";
-  const payTo = env.X402_RECEIVE_PAY_TO?.trim() ?? "";
-  const price = env.X402_RECEIVE_PRICE_USDC?.trim() ?? "";
+  // The receiver must be runnable in its default disabled state without payment configuration.
+  // These inert defaults are never advertised as payment requirements while enabled=false.
+  const payTo = env.X402_RECEIVE_PAY_TO?.trim() || (enabled ? "" : "0x0000000000000000000000000000000000000001");
+  const price = env.X402_RECEIVE_PRICE_USDC?.trim() || (enabled ? "" : "0.01");
   const facilitatorRaw = env.X402_FACILITATOR_URL?.trim() || "https://facilitator.payai.network/";
-  const publicRaw = env.X402_PUBLIC_URL?.trim() ?? "";
+  const publicRaw = env.X402_PUBLIC_URL?.trim() || (enabled ? "" : "https://localhost.invalid/");
   const host = env.X402_RECEIVE_HOST?.trim() || "127.0.0.1";
   const port = Number(env.X402_RECEIVE_PORT ?? "8787");
 
